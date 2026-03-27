@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../**/*.{ts,tsx}";
 
 /* ─── Light theme (default) ───────────────────────────────────────── */
 :root,
