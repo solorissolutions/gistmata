@@ -51,3 +51,5 @@ next-env.d.ts
 tmp_*.py
 tmp_*_out.txt
 \{for(e
+
+.vercel
