@@ -20,6 +20,7 @@ export function TopicFilters({
           <Link
             key={tag}
             href={href}
+            prefetch={false}
             className={cn(
               "shrink-0 rounded-full border px-3 py-2 text-xs font-semibold tracking-[0.04em] transition",
               selected

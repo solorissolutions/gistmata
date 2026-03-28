@@ -3,14 +3,13 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { LogoLockup } from "@/components/blocks/logo-lockup";
 import { RecoveryForm } from "@/components/forms/recovery-form";
-import { getOperatorDashboardDestination } from "@/lib/server/operator-app";
 import { getCurrentUser } from "@/lib/server/services/auth";
 
 export default async function RecoveryPage() {
   const viewer = await getCurrentUser();
 
   if (viewer) {
-    redirect(viewer.isOga ? getOperatorDashboardDestination() : "/mata");
+    redirect("/mata");
   }
 
   return (

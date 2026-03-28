@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
-const operatorOrigin = process.env.OGA_APP_ORIGIN?.trim().replace(/\/$/, "") || null;
 type IgnoredPattern = RegExp | string;
 type WatchOptionsLike = {
   ignored?: IgnoredPattern | IgnoredPattern[];
@@ -33,11 +32,6 @@ function mergeIgnoredPatterns(
 
   return typeof base === "string" ? [base, ...patterns] : base;
 }
-
-function ogaDestination(path: string) {
-  return operatorOrigin ? `${operatorOrigin}${path}` : path;
-}
-
 const nextConfig: NextConfig = {
   async headers() {
     return [
@@ -54,50 +48,40 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      ...(operatorOrigin
-        ? [
-            {
-              source: "/oga-login",
-              destination: `${operatorOrigin}/login`,
-              permanent: true,
-              basePath: false as const,
-            },
-            {
-              source: "/oga-v2",
-              destination: `${operatorOrigin}/oga-v2`,
-              permanent: true,
-              basePath: false as const,
-            },
-            {
-              source: "/oga-v2/:path*",
-              destination: `${operatorOrigin}/oga-v2/:path*`,
-              permanent: true,
-              basePath: false as const,
-            },
-          ]
-        : []),
       {
         source: "/oga/gists",
-        destination: ogaDestination("/oga-v2/matters"),
-        permanent: true,
+        destination: "/",
+        permanent: false,
       },
       {
         source: "/oga/gists/:path*",
-        destination: ogaDestination("/oga-v2/matters/:path*"),
-        permanent: true,
-        basePath: operatorOrigin ? false : undefined,
+        destination: "/",
+        permanent: false,
       },
       {
         source: "/oga",
-        destination: ogaDestination("/oga-v2"),
-        permanent: true,
-        basePath: operatorOrigin ? false : undefined,
+        destination: "/",
+        permanent: false,
       },
       {
         source: "/oga/:path*",
-        destination: ogaDestination("/oga-v2/:path*"),
-        permanent: true,
-        basePath: operatorOrigin ? false : undefined,
+        destination: "/",
+        permanent: false,
+      },
+      {
+        source: "/oga-v2",
+        destination: "/",
+        permanent: false,
+      },
+      {
+        source: "/oga-v2/:path*",
+        destination: "/",
+        permanent: false,
+      },
+      {
+        source: "/oga-login",
+        destination: "/",
+        permanent: false,
       },
     ];
   },

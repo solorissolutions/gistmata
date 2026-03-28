@@ -29,6 +29,7 @@ export function GistCard({
               {RELATION_TYPE_LABELS[gist.parentRelationType ?? "follow-up"]} ·{" "}
               <Link
                 href={`/gist/${gist.parentGistId}`}
+                prefetch={false}
                 className="underline underline-offset-2 hover:opacity-80"
               >
                 View original gist
@@ -72,7 +73,7 @@ export function GistCard({
         {detail ? (
           <p className="gist-copy">{gist.body}</p>
         ) : (
-          <Link href={`/gist/${gist.id}`} className="block gist-copy transition hover:opacity-80">
+          <Link href={`/gist/${gist.id}`} prefetch={false} className="block gist-copy transition hover:opacity-80">
             {gist.body}
           </Link>
         )}
@@ -86,6 +87,7 @@ export function GistCard({
             {/* Join mouth — follow up on this gist */}
             <Link
               href={`/drop/follow-up/${gist.id}`}
+              prefetch={false}
               aria-label={`Join mouth on this gist${gist.followUpCount > 0 ? ` — ${gist.followUpCount} follow-ups` : ""}`}
               className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-semibold transition hover:bg-[var(--surface-2)]"
             >

@@ -1,24 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope, Newsreader } from "next/font/google";
 import { cookies } from "next/headers";
 
 import { ServiceWorkerRegistration } from "@/components/app-shell/service-worker-registration";
 import { ThemeProvider } from "@/components/app-shell/theme-provider";
 import { normalizeTheme, THEME_COOKIE_NAME } from "@/lib/theme";
 import "./globals.css";
-
-const manrope = Manrope({
-  variable: "--font-manrope",
-  display: "swap",
-  subsets: ["latin"],
-});
-
-const newsreader = Newsreader({
-  variable: "--font-newsreader",
-  display: "swap",
-  preload: false,
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
@@ -56,7 +42,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${manrope.variable} ${newsreader.variable} h-full antialiased`}
+      className="h-full antialiased"
       data-theme={dataTheme}
       style={{ colorScheme: dataTheme }}
     >

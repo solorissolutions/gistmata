@@ -28,6 +28,7 @@ export function FeedSortToggle({
           <Link
             key={option.value}
             href={href}
+            prefetch={false}
             className={cn(
               "shrink-0 rounded-full border px-3 py-2.5 text-xs font-semibold tracking-[0.08em] transition",
               active === option.value

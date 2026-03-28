@@ -4,12 +4,10 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 
 import type { UserRecord, Viewer } from "@/lib/domain/types";
-import { evaluateOgaAccess } from "@/lib/server/auth/access";
 import { clearSessionCookie, getSessionToken, setSessionCookie } from "@/lib/server/auth/session";
 import {
   createUserSession,
   deleteUserSession,
-  getEnsuredOgaUserRecord,
   getViewerBySessionToken,
   loginByUsernameAndPin,
   recoverByAccountCode,
@@ -42,11 +40,6 @@ function mapUserRecordToViewer(user: UserRecord): Viewer {
   };
 }
 
-async function getDevelopmentOgaViewer() {
-  const user = await getEnsuredOgaUserRecord();
-  return user ? mapUserRecordToViewer(user) : null;
-}
-
 export async function getCurrentSession() {
   return getSessionToken();
 }
@@ -66,44 +59,6 @@ export async function requireUser() {
   }
 
   return viewer;
-}
-
-export async function canAccessOgaDashboard(viewer: Viewer | null) {
-  return evaluateOgaAccess(viewer);
-}
-
-export async function requireOga() {
-  const viewer = await getCurrentUser();
-  const demoAccessEnabled =
-    process.env.NODE_ENV !== "production" && process.env.ALLOW_OGA_DEMO_ACCESS === "true";
-
-  if (demoAccessEnabled) {
-    const ogaViewer = await getDevelopmentOgaViewer();
-
-    if (ogaViewer) {
-      return ogaViewer;
-    }
-  }
-
-  const access = await canAccessOgaDashboard(viewer);
-
-  if (process.env.NODE_ENV !== "production") {
-    console.info("[auth][oga]", {
-      viewer: viewer?.username ?? null,
-      isOga: viewer?.isOga ?? false,
-      decision: access.reason,
-    });
-  }
-
-  if (!access.allowed) {
-    redirect(access.redirectTo);
-  }
-
-  return access.viewer;
-}
-
-export async function requireOgaV2() {
-  return requireOga();
 }
 
 export async function loginWithUsernamePin(username: string, pin: string) {

@@ -178,7 +178,6 @@ export async function submitReport(
   try {
     await submitReportService(validated.data, viewer);
     revalidatePath(`/gist/${validated.data.gistId}`);
-    revalidatePath("/oga/trust");
     return actionSuccess("Report sent to oga queue.");
   } catch (error) {
     return actionError(error instanceof Error ? error.message : "Report no send.");
@@ -250,10 +249,6 @@ export async function submitContactOga(
           : undefined,
     }, viewer);
     revalidatePath("/contact-oga");
-    revalidatePath("/oga");
-    revalidatePath("/oga/inbox");
-    revalidatePath("/oga-v2");
-    revalidatePath("/oga-v2/inbox");
     return actionSuccess(
       validated.data.category === "Intel"
         ? "Intel don land for oga queue."

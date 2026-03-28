@@ -11,7 +11,7 @@ export default async function Home() {
   const viewer = await getCurrentViewer();
 
   if (viewer) {
-    redirect(viewer.isOga ? "/oga" : "/mata");
+    redirect("/mata");
   }
 
   return (
@@ -31,12 +31,12 @@ export default async function Home() {
 
         {/* CTAs */}
         <div className="space-y-3">
-          <Link href="/join" className="block">
+          <Link href="/join" prefetch={false} className="block">
             <Button className="w-full" size="lg">
               Join with code
             </Button>
           </Link>
-          <Link href="/login" className="block">
+          <Link href="/login" prefetch={false} className="block">
             <Button variant="secondary" className="w-full" size="lg">
               Login
             </Button>

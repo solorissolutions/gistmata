@@ -4,6 +4,8 @@
 /* ─── Light theme (default) ───────────────────────────────────────── */
 :root,
 [data-theme="light"] {
+  --font-sans-ui: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif-ui: Georgia, "Times New Roman", serif;
   --background: #f7f4ec;
   --foreground: #163325;
   --gm-green: #127846;
@@ -97,8 +99,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-manrope);
-  --font-serif: var(--font-newsreader);
+  --font-sans: var(--font-sans-ui);
+  --font-serif: var(--font-serif-ui);
 }
 
 /* ─── Reset ───────────────────────────────────────────────────────── */
@@ -143,7 +145,7 @@ html[data-theme="dark"] {
 
 body {
   color: var(--foreground);
-  font-family: var(--font-manrope), sans-serif;
+  font-family: var(--font-sans-ui);
   background-image: var(--gm-bg-gradient);
 }
 
@@ -211,7 +213,7 @@ textarea {
   }
 
   .gist-copy {
-    font-family: var(--font-newsreader), serif;
+    font-family: var(--font-serif-ui);
     font-size: clamp(1.1rem, 2vw, 1.32rem);
     line-height: 1.58;
     letter-spacing: -0.01em;

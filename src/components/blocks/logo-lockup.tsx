@@ -13,26 +13,47 @@ export function LogoLockup({
   compact?: boolean;
   mini?: boolean;
 }) {
-  const width = mini ? 44 : compact ? 132 : 168;
-  const height = mini ? 44 : compact ? 90 : 114;
-
   return (
-    <Link href={href} className={cn("inline-flex", className)} aria-label="GistMata">
-      <img
-        src="/logo.png"
-        alt="GistMata"
-        width={width}
-        height={height}
+    <Link
+      href={href}
+      prefetch={false}
+      className={cn("inline-flex", className)}
+      aria-label="GistMata"
+    >
+      <span
         className={cn(
-          "h-auto rounded-[18px] border border-[var(--border)] shadow-sm",
+          "inline-flex items-center border border-[var(--border)] bg-[var(--surface)] shadow-sm",
           mini
-            ? "w-11 rounded-[14px]"
+            ? "h-11 w-11 justify-center rounded-[14px]"
             : compact
-              ? "w-[132px]"
-              : "w-[152px] sm:w-[168px]",
+              ? "gap-2 rounded-[18px] px-3 py-2"
+              : "gap-3 rounded-[22px] px-4 py-3",
         )}
-        decoding="async"
-      />
+      >
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center justify-center rounded-[14px] bg-[var(--accent)] font-black text-[var(--accent-foreground)]",
+            mini ? "h-8 w-8 text-[11px]" : compact ? "h-9 w-9 text-xs" : "h-10 w-10 text-sm",
+          )}
+        >
+          GM
+        </span>
+        {mini ? null : (
+          <span className="min-w-0">
+            <span className="block text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--gm-ink-soft)]">
+              Anonymous board
+            </span>
+            <span
+              className={cn(
+                "block leading-none font-black tracking-[-0.06em] text-[var(--foreground)]",
+                compact ? "text-lg" : "text-[1.7rem]",
+              )}
+            >
+              GistMata
+            </span>
+          </span>
+        )}
+      </span>
     </Link>
   );
 }

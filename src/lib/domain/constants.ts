@@ -220,19 +220,6 @@ export function getFeedLevelLabel(value: FeedLevel) {
   return FEED_LEVELS.find((level) => level.value === value)?.label ?? "Mata";
 }
 
-export const OGA_NAV_ITEMS = [
-  { href: "/oga", label: "Overview" },
-  { href: "/oga/inbox", label: "Inbox" },
-  { href: "/oga/mata", label: "Mata Monitor" },
-  { href: "/oga/gists", label: "Gists" },
-  { href: "/oga/trust", label: "Trust" },
-  { href: "/oga/users", label: "Users" },
-  { href: "/oga/growth", label: "Growth" },
-  { href: "/oga/broadcast", label: "Broadcast" },
-  { href: "/oga/location", label: "Location" },
-  { href: "/oga/settings", label: "Settings" },
-];
-
 export function getTierByPoints(points: number): UserTier {
   const match = [...TIER_DEFINITIONS]
     .reverse()

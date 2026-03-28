@@ -7,7 +7,6 @@ import {
   fetchContactOgaBundle,
   updateContactMessageStatus,
 } from "@/lib/server/repositories/contact-repository";
-import { fetchOgaDashboardSnapshot } from "@/lib/server/repositories/oga-repository";
 
 export async function submitContactOgaMessage(
   input: ContactOgaMessageInput,
@@ -24,16 +23,6 @@ export async function submitContactOgaMessage(
 
 export async function getContactOgaBundle(viewer: Viewer) {
   return fetchContactOgaBundle(viewer.id);
-}
-
-export async function getOgaInboxBundle() {
-  const snapshot = await fetchOgaDashboardSnapshot();
-  return snapshot.inbox;
-}
-
-export async function getOgaMessageDetail(messageId: string) {
-  const inbox = await getOgaInboxBundle();
-  return inbox.messages.find((message) => message.id === messageId) ?? null;
 }
 
 export async function markOgaMessageRead(messageId: string, oga: Viewer) {

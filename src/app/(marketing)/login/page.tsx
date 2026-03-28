@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { LogoLockup } from "@/components/blocks/logo-lockup";
 import { LoginForm } from "@/components/forms/login-form";
-import { getOperatorDashboardDestination } from "@/lib/server/operator-app";
 import { getCurrentUser } from "@/lib/server/services/auth";
 
 export const metadata = { title: "Login — GistMata" };
@@ -13,7 +12,7 @@ export default async function LoginPage() {
   const viewer = await getCurrentUser();
 
   if (viewer) {
-    redirect(viewer.isOga ? getOperatorDashboardDestination() : "/mata");
+    redirect("/mata");
   }
 
   return (
@@ -22,6 +21,7 @@ export default async function LoginPage() {
         <LogoLockup />
         <Link
           href="/join"
+          prefetch={false}
           className="text-sm font-semibold text-[var(--gm-green-deep)]"
         >
           New here? Join

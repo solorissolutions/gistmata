@@ -2,7 +2,6 @@ import "server-only";
 
 import type { Viewer } from "@/lib/domain/types";
 import { reportSchema } from "@/lib/domain/validation";
-import { fetchOgaDashboardSnapshot } from "@/lib/server/repositories/oga-repository";
 import {
   createReport,
   updateGistStatus,
@@ -31,11 +30,6 @@ export async function submitReport(input: {
   });
 }
 
-export async function getModerationQueue() {
-  const snapshot = await fetchOgaDashboardSnapshot();
-  return snapshot.trust.queue;
-}
-
 export async function removeGist(gistId: string, oga: Viewer) {
   return updateGistStatus({
     ogaId: oga.id,
@@ -50,14 +44,4 @@ export async function restoreGist(gistId: string, oga: Viewer) {
     gistId,
     status: "active",
   });
-}
-
-export async function evaluateTrustRisk(userId: string) {
-  const snapshot = await fetchOgaDashboardSnapshot();
-  return snapshot.users.items.find((user) => user.id === userId) ?? null;
-}
-
-export async function getUserTrustSummary(userId: string) {
-  const snapshot = await fetchOgaDashboardSnapshot();
-  return snapshot.users.items.find((user) => user.id === userId) ?? null;
 }

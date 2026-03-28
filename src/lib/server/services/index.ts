@@ -6,7 +6,6 @@ export * as interactionService from "@/lib/server/services/interaction";
 export * as locationService from "@/lib/server/services/location";
 export * as mataService from "@/lib/server/services/mata";
 export * as matterService from "@/lib/server/services/matter";
-export * as ogaService from "@/lib/server/services/oga";
 export * as onboardingService from "@/lib/server/services/onboarding";
 export * as referralService from "@/lib/server/services/referral";
 export * as scoreService from "@/lib/server/services/score";

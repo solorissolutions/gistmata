@@ -5,7 +5,6 @@ import {
   getLocationProvider,
   resolveLocationSnapshot,
 } from "@/lib/server/repositories/location-repository";
-import { fetchOgaDashboardSnapshot } from "@/lib/server/repositories/oga-repository";
 
 export async function resolvePostingLocation(
   input: { latitude?: number; longitude?: number },
@@ -28,9 +27,4 @@ export function getViewerLocationContext(viewer: Viewer) {
     homeState: viewer.homeState,
     location: viewer.location,
   };
-}
-
-export async function getLocationHealthSummary() {
-  const snapshot = await fetchOgaDashboardSnapshot();
-  return snapshot.location.resolutionHealth;
 }

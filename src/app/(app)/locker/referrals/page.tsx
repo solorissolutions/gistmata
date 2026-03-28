@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { PageHeader } from "@/components/blocks/page-header";
 import { BackButton } from "@/components/blocks/back-button";
 import { ReferralCodeList } from "@/components/referrals/referral-code-list";
@@ -48,11 +46,7 @@ export default async function LockerReferralsPage() {
 
         {data.viewer.isOga ? (
           <div className="rounded-[22px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3 text-sm text-[var(--gm-ink-soft)]">
-            Referral generation for oga stays for{" "}
-            <Link href="/oga/growth" className="font-semibold text-[var(--gm-green-deep)]">
-              Oga → Growth
-            </Link>
-            .
+            This operator account still has unlimited referral capacity, but generation is no longer handled inside the public app.
           </div>
         ) : (
           <div className="rounded-[22px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3 text-sm text-[var(--gm-ink-soft)]">

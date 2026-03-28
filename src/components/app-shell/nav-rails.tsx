@@ -25,7 +25,6 @@ import { cn } from "@/lib/utils";
 import { LogoLockup } from "@/components/blocks/logo-lockup";
 import { useStoredBoolean } from "@/components/app-shell/use-stored-boolean";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
-import { ContactOgaSheet } from "@/components/app-shell/contact-oga-sheet";
 
 const icons = {
   "/mata": House,
@@ -55,18 +54,26 @@ function CurrentCoverage({ viewer, compact = false }: { viewer: Viewer; compact?
     ? `${viewer.location.admin2Name} · ${viewer.homeState}`
     : "Your local Mata go sharpen after your first Drop Gist.";
 
+  if (compact) {
+    return (
+      <Card className="flex items-center justify-center px-2 py-4">
+        <MapPin
+          className="h-4 w-4 shrink-0 text-[var(--gm-ink-soft)]"
+          aria-hidden="true"
+        />
+        <span className="sr-only">Current coverage: {viewer.homeState}</span>
+      </Card>
+    );
+  }
+
   return (
-    <Card className={cn("space-y-2", compact && "px-2 py-4 text-center")}>
+    <Card className="space-y-2">
       <div className="muted-label flex items-center gap-1">
         <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
         Current coverage
       </div>
-      <div className={cn("font-bold tracking-[-0.03em]", compact ? "text-sm" : "text-lg")}>
-        {compact ? viewer.homeState : locality}
-      </div>
-      {!compact ? (
-        <p className="text-sm leading-6 text-[var(--gm-ink-soft)]">{detail}</p>
-      ) : null}
+      <div className="text-lg font-bold tracking-[-0.03em]">{locality}</div>
+      <p className="text-sm leading-6 text-[var(--gm-ink-soft)]">{detail}</p>
     </Card>
   );
 }
@@ -90,6 +97,7 @@ function RailLinks({
           <Link
             key={item.href}
             href={item.href}
+            prefetch={false}
             onClick={onNavigate}
             aria-label={item.label}
             aria-current={active ? "page" : undefined}
@@ -122,8 +130,6 @@ export function LeftRail({ viewer }: { viewer: Viewer }) {
   );
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const identity = `@${viewer.username} · ${viewer.tier}`;
-
   return (
     <>
       {/* ── Mobile top bar (sticky) ── */}
@@ -142,7 +148,7 @@ export function LeftRail({ viewer }: { viewer: Viewer }) {
           <LogoLockup href="/mata" compact className="min-w-0" />
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle compact />
-            <Link href="/drop" aria-label="Drop Gist">
+            <Link href="/drop" prefetch={false} aria-label="Drop Gist">
               <Button size="sm" icon={<SendHorizontal className="h-4 w-4" aria-hidden="true" />}>
                 Gist
               </Button>
@@ -188,7 +194,7 @@ export function LeftRail({ viewer }: { viewer: Viewer }) {
 
             <Card className="mt-4 space-y-3 p-4">
               <RailLinks pathname={pathname} onNavigate={() => setMobileOpen(false)} />
-              <Link href="/drop" onClick={() => setMobileOpen(false)} aria-label="Drop Gist">
+              <Link href="/drop" prefetch={false} onClick={() => setMobileOpen(false)} aria-label="Drop Gist">
                 <Button className="w-full" icon={<SendHorizontal className="h-4 w-4" aria-hidden="true" />}>
                   Drop Gist
                 </Button>
@@ -200,6 +206,7 @@ export function LeftRail({ viewer }: { viewer: Viewer }) {
               <p className="muted-label px-1">Mata context</p>
               <Link
                 href="/mata#street-signal"
+                prefetch={false}
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[var(--nav-inactive)] hover:bg-[var(--surface-2)] hover:text-[var(--nav-active)]"
               >
@@ -208,6 +215,7 @@ export function LeftRail({ viewer }: { viewer: Viewer }) {
               </Link>
               <Link
                 href="/mata#nearby-moving"
+                prefetch={false}
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[var(--nav-inactive)] hover:bg-[var(--surface-2)] hover:text-[var(--nav-active)]"
               >
@@ -216,6 +224,7 @@ export function LeftRail({ viewer }: { viewer: Viewer }) {
               </Link>
               <Link
                 href="/score"
+                prefetch={false}
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[var(--nav-inactive)] hover:bg-[var(--surface-2)] hover:text-[var(--nav-active)]"
               >
@@ -224,18 +233,13 @@ export function LeftRail({ viewer }: { viewer: Viewer }) {
               </Link>
               <Link
                 href="/locker/saved"
+                prefetch={false}
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[var(--nav-inactive)] hover:bg-[var(--surface-2)] hover:text-[var(--nav-active)]"
               >
                 <BookMarked className="h-4 w-4 shrink-0" aria-hidden="true" />
                 Saved Gists
               </Link>
-            </div>
-
-            {/* Contact oga in drawer */}
-            <div className="mt-4">
-              <p className="muted-label mb-1 px-1">Support</p>
-              <ContactOgaSheet identity={identity} />
             </div>
 
             <div className="mt-4">
@@ -289,11 +293,8 @@ export function LeftRail({ viewer }: { viewer: Viewer }) {
 
             <RailLinks pathname={pathname} collapsed={collapsed} />
 
-            {/* Contact oga */}
-            <ContactOgaSheet identity={identity} collapsed={collapsed} />
-
             {/* Drop Gist CTA */}
-            <Link href="/drop" aria-label="Drop Gist">
+            <Link href="/drop" prefetch={false} aria-label="Drop Gist">
               <Button
                 className={cn("w-full", collapsed && "h-12 rounded-2xl px-0")}
                 icon={<SendHorizontal className="h-4 w-4" aria-hidden="true" />}
@@ -335,6 +336,7 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               aria-current={active ? "page" : undefined}
               aria-label={item.label}
               className={cn(

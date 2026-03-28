@@ -14,6 +14,7 @@ export function FeedTabs({ active }: { active: string }) {
           <Link
             key={level.value}
             href={href}
+            prefetch={false}
             className={cn(
               "shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition",
               selected

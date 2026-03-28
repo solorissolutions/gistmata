@@ -1,5 +1,5 @@
-const CACHE_NAME = "gistmata-static-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/logo.png"];
+const CACHE_NAME = "gistmata-static-v2";
+const APP_SHELL = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

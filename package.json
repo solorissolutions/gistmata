@@ -2,24 +2,15 @@
   "name": "gistmata-web",
   "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "apps/oga"
-  ],
   "scripts": {
     "dev": "next dev --webpack",
-    "dev:oga": "npm run dev --workspace apps/oga",
     "build": "next build",
-    "build:oga": "npm run build --workspace apps/oga",
     "start": "next start",
     "lint": "eslint .",
-    "lint:oga": "npm run lint --workspace apps/oga",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:migrate": "tsx scripts/db-migrate.ts",
-    "oga:ensure": "tsx scripts/ensure-oga-auth.ts",
-    "seed": "tsx scripts/seed.ts",
-    "seed:supabase": "tsx scripts/bootstrap-supabase.ts",
     "validate": "tsx scripts/validate.ts",
     "validate:ai": "tsx --env-file=.env.local scripts/validate-ai.ts"
   },
