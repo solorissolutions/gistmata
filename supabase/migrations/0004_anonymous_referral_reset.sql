@@ -9,6 +9,9 @@ alter table if exists join_drafts
 alter table if exists referral_codes
   add column if not exists created_at timestamptz not null default now();
 
+delete from alerts
+where type not in ('comment', 'activity', 'points', 'account');
+
 alter table if exists alerts
   drop constraint if exists alerts_type_check;
 
