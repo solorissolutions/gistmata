@@ -62,6 +62,18 @@ const nextConfig: NextConfig = {
               permanent: true,
               basePath: false as const,
             },
+            {
+              source: "/oga-v2",
+              destination: `${operatorOrigin}/oga-v2`,
+              permanent: true,
+              basePath: false as const,
+            },
+            {
+              source: "/oga-v2/:path*",
+              destination: `${operatorOrigin}/oga-v2/:path*`,
+              permanent: true,
+              basePath: false as const,
+            },
           ]
         : []),
       {
@@ -72,18 +84,6 @@ const nextConfig: NextConfig = {
       {
         source: "/oga/gists/:path*",
         destination: ogaDestination("/oga-v2/matters/:path*"),
-        permanent: true,
-        basePath: operatorOrigin ? false : undefined,
-      },
-      {
-        source: "/oga-v2",
-        destination: ogaDestination("/oga-v2"),
-        permanent: true,
-        basePath: operatorOrigin ? false : undefined,
-      },
-      {
-        source: "/oga-v2/:path*",
-        destination: ogaDestination("/oga-v2/:path*"),
         permanent: true,
         basePath: operatorOrigin ? false : undefined,
       },

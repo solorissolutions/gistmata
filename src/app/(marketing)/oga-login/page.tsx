@@ -48,7 +48,7 @@ export default async function OgaLoginPage() {
           </p>
         </div>
 
-        <LoginForm />
+        <LoginForm recoveryHref={getOperatorRecoveryDestination()} />
 
         <p className="text-sm leading-6 text-[var(--gm-ink-soft)]">
           If the session dropped fully, use{" "}

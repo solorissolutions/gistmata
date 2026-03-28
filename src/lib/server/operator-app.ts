@@ -11,7 +11,7 @@ export function hasStandaloneOperatorApp() {
 }
 
 export function getOperatorDashboardDestination() {
-  return externalizeOperatorPath("/oga-v2") ?? "/oga";
+  return externalizeOperatorPath("/oga-v2") ?? "/oga-v2";
 }
 
 export function getOperatorLoginDestination() {

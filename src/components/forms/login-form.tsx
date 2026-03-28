@@ -8,7 +8,11 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { INITIAL_ACTION_STATE } from "@/lib/domain/validation";
 import { loginAction } from "@/lib/server/auth-actions";
 
-export function LoginForm() {
+export function LoginForm({
+  recoveryHref = "/locker/recovery",
+}: {
+  recoveryHref?: string;
+}) {
   const [state, action] = useActionState(loginAction, INITIAL_ACTION_STATE);
 
   return (
@@ -60,7 +64,10 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-[var(--gm-ink-soft)]">
         Lost your session and need full recovery?{" "}
-        <Link href="/locker/recovery" className="font-semibold text-[var(--gm-green-deep)] underline underline-offset-2">
+        <Link
+          href={recoveryHref}
+          className="font-semibold text-[var(--gm-green-deep)] underline underline-offset-2"
+        >
           Use Account Code
         </Link>
       </p>
