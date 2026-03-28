@@ -18,6 +18,7 @@ import {
   logoutUser,
   recoverUserSession,
 } from "@/lib/server/services/auth";
+import { getOperatorDashboardDestination } from "@/lib/server/operator-app";
 import {
   completeOnboardingBasics,
   createUserWithPinAndAccountCode,
@@ -139,7 +140,7 @@ export async function recoverAccount(
 
   try {
     const recovered = await recoverUserSession(validated.data.accountCode, validated.data.pin);
-    redirect(recovered.user.isOga ? "/oga" : "/mata");
+    redirect(recovered.user.isOga ? getOperatorDashboardDestination() : "/mata");
   } catch (error) {
     return actionError(
       error instanceof Error ? error.message : "Recovery no work.",
@@ -163,7 +164,7 @@ export async function loginAction(
 
   try {
     const result = await loginWithUsernamePin(validated.data.username, validated.data.pin);
-    redirect(result.user.isOga ? "/oga" : "/mata");
+    redirect(result.user.isOga ? getOperatorDashboardDestination() : "/mata");
   } catch (error) {
     return actionError(
       error instanceof Error ? error.message : "Login no work. Check your username and PIN.",

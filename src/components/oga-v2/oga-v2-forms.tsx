@@ -5,7 +5,6 @@ import { useActionState, useState } from "react";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { INITIAL_ACTION_STATE } from "@/lib/domain/validation";
 import {
-  createSurveyV2Action,
   generateReferralsV2Action,
   pinGistV2Action,
   sendBroadcastV2Action,
@@ -100,186 +99,6 @@ export function OgaV2ReferralBatchForm() {
   );
 }
 
-export function OgaV2SurveyComposer({
-  prefillQuestion,
-  prefillContext,
-  sourceMatter,
-}: {
-  prefillQuestion?: string;
-  prefillContext?: string;
-  sourceMatter?: { id: string; label: string } | null;
-}) {
-  const [state, action] = useActionState(createSurveyV2Action, INITIAL_ACTION_STATE);
-  const [surveyType, setSurveyType] = useState("single-choice");
-  const [questionPreview, setQuestionPreview] = useState(prefillQuestion ?? "");
-  const [optionOne, setOptionOne] = useState("");
-  const [optionTwo, setOptionTwo] = useState("");
-  const [optionThree, setOptionThree] = useState("");
-  const supported = surveyType === "single-choice";
-
-  return (
-    <form action={action} className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-2">
-              <span className="text-sm font-semibold">Survey type</span>
-              <select
-                name="surveyType"
-                value={surveyType}
-                onChange={(event) => setSurveyType(event.target.value)}
-                className="h-11 w-full rounded-2xl border border-[var(--border)] bg-[var(--input)] px-4 text-sm text-[var(--input-foreground)]"
-              >
-                <option value="single-choice">Single-choice poll</option>
-                <option value="multi-choice">Multi-choice</option>
-                <option value="multi-question">Multi-question</option>
-                <option value="anonymous-feedback">Anonymous feedback</option>
-              </select>
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-semibold">Close date</span>
-              <input
-                name="endsAt"
-                type="date"
-                className="h-11 w-full rounded-2xl border border-[var(--border)] bg-[var(--input)] px-4 text-sm text-[var(--input-foreground)]"
-              />
-            </label>
-          </div>
-
-          <label className="space-y-2">
-            <span className="text-sm font-semibold">Public question</span>
-            <input
-              name="question"
-              defaultValue={prefillQuestion}
-              onChange={(event) => setQuestionPreview(event.target.value)}
-              placeholder="What should the public answer?"
-              className="h-11 w-full rounded-2xl border border-[var(--border)] bg-[var(--input)] px-4 text-sm text-[var(--input-foreground)] placeholder:text-[var(--input-placeholder)]"
-            />
-          </label>
-
-          <label className="space-y-2">
-            <span className="text-sm font-semibold">Operator context</span>
-            <textarea
-              defaultValue={prefillContext}
-              placeholder="Internal context for oga. This is staged in the new dashboard and not persisted to the public runtime yet."
-              className="min-h-24 w-full rounded-[22px] border border-[var(--border)] bg-[var(--input)] px-4 py-3 text-sm text-[var(--input-foreground)] placeholder:text-[var(--input-placeholder)]"
-            />
-          </label>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-2">
-              <span className="text-sm font-semibold">Target scope</span>
-              <select
-                name="scopeType"
-                defaultValue="nigeria"
-                className="h-11 w-full rounded-2xl border border-[var(--border)] bg-[var(--input)] px-4 text-sm text-[var(--input-foreground)]"
-              >
-                <option value="nigeria">Nigeria</option>
-                <option value="state">State</option>
-                <option value="area">Area</option>
-              </select>
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-semibold">Scope value</span>
-              <input
-                name="scopeValue"
-                placeholder="Only if scope is state or area"
-                className="h-11 w-full rounded-2xl border border-[var(--border)] bg-[var(--input)] px-4 text-sm text-[var(--input-foreground)] placeholder:text-[var(--input-placeholder)]"
-              />
-            </label>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="space-y-2">
-              <span className="text-sm font-semibold">Option one</span>
-              <input
-                name="optionOne"
-                onChange={(event) => setOptionOne(event.target.value)}
-                placeholder="Option one"
-                className="h-11 w-full rounded-2xl border border-[var(--border)] bg-[var(--input)] px-4 text-sm text-[var(--input-foreground)] placeholder:text-[var(--input-placeholder)]"
-              />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-semibold">Option two</span>
-              <input
-                name="optionTwo"
-                onChange={(event) => setOptionTwo(event.target.value)}
-                placeholder="Option two"
-                className="h-11 w-full rounded-2xl border border-[var(--border)] bg-[var(--input)] px-4 text-sm text-[var(--input-foreground)] placeholder:text-[var(--input-placeholder)]"
-              />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-semibold">Option three</span>
-              <input
-                name="optionThree"
-                onChange={(event) => setOptionThree(event.target.value)}
-                placeholder="Option three"
-                className="h-11 w-full rounded-2xl border border-[var(--border)] bg-[var(--input)] px-4 text-sm text-[var(--input-foreground)] placeholder:text-[var(--input-placeholder)]"
-              />
-            </label>
-          </div>
-
-          {sourceMatter ? (
-            <div className="rounded-[22px] border border-dashed border-[var(--border)] px-4 py-4 text-sm leading-6 text-[var(--gm-ink-soft)]">
-              <div className="font-semibold text-[var(--foreground)]">Triggered from matter</div>
-              <div className="mt-1">{sourceMatter.label}</div>
-              <input type="hidden" name="sourceMatterId" value={sourceMatter.id} />
-            </div>
-          ) : null}
-
-          {!supported ? (
-            <div className="rounded-[22px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-4 text-sm leading-6 text-[var(--gm-ink-soft)]">
-              This survey mode is visible in the new dashboard now, but the public runtime still only publishes single-choice polls safely. Keep inspecting the control surface here; runtime wiring is the next backend step.
-            </div>
-          ) : null}
-
-          {state.message ? (
-            <p
-              className={
-                state.status === "error"
-                  ? "text-sm text-[var(--destructive)]"
-                  : "text-sm text-[var(--accent)]"
-              }
-            >
-              {state.message}
-            </p>
-          ) : null}
-
-          <SubmitButton
-            idleLabel="Publish Judgement Day"
-            pendingLabel="Publishing..."
-            disabled={!supported}
-          />
-        </div>
-
-        <div className="rounded-[22px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-4">
-          <div className="muted-label">Preview</div>
-          <div className="mt-3 space-y-3">
-            <div className="text-sm font-semibold">
-              {questionPreview || "Public question preview"}
-            </div>
-            <div className="space-y-2">
-              {[optionOne, optionTwo, optionThree]
-                .filter(Boolean)
-                .map((option) => (
-                  <div
-                    key={option}
-                    className="rounded-[18px] border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                  >
-                    {option}
-                  </div>
-                ))}
-            </div>
-            <p className="text-xs leading-5 text-[var(--gm-ink-soft)]">
-              Single-choice goes live in the current runtime. The richer modes are surfaced here but still staged.
-            </p>
-          </div>
-        </div>
-      </div>
-    </form>
-  );
-}
-
 export function OgaV2BroadcastComposer() {
   const [state, action] = useActionState(sendBroadcastV2Action, INITIAL_ACTION_STATE);
   const [title, setTitle] = useState("");
@@ -346,7 +165,7 @@ export function OgaV2BroadcastComposer() {
               name="link"
               value={link}
               onChange={(event) => setLink(event.target.value)}
-              placeholder="/alerts or /judgement-day/..."
+              placeholder="/alerts or /mata/..."
               className="h-11 w-full rounded-2xl border border-[var(--border)] bg-[var(--input)] px-4 text-sm text-[var(--input-foreground)] placeholder:text-[var(--input-placeholder)]"
             />
           </label>

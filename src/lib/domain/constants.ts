@@ -104,7 +104,6 @@ export const REPORT_TYPE_OPTIONS: Array<{
 export const ALERT_GROUP_LABELS: Record<string, AlertGroup> = {
   comment: "Comments",
   activity: "Mata activity",
-  survey: "Judgement Day",
   points: "Points",
   account: "Account / inactivity",
 };
@@ -137,16 +136,6 @@ export const FEATURE_FLAGS: Array<{
   enabled: boolean;
   description: string;
 }> = [
-  {
-    key: "predictions",
-    enabled: false,
-    description: "Prediction placeholder routes and teasers.",
-  },
-  {
-    key: "promoted_gist",
-    enabled: false,
-    description: "Reserved slot for future promoted gists.",
-  },
   {
     key: "dark_mode",
     enabled: false,
@@ -238,7 +227,6 @@ export const OGA_NAV_ITEMS = [
   { href: "/oga/gists", label: "Gists" },
   { href: "/oga/trust", label: "Trust" },
   { href: "/oga/users", label: "Users" },
-  { href: "/oga/judgement-day", label: "Judgement Day" },
   { href: "/oga/growth", label: "Growth" },
   { href: "/oga/broadcast", label: "Broadcast" },
   { href: "/oga/location", label: "Location" },
@@ -303,25 +291,25 @@ export const TIER_BENEFITS: Record<
 > = {
   "New Member": {
     current: [
-      "Post, react, comment, and vote on Judgement Day.",
-      "Build your trust footprint inside Mata.",
+      "Post gists, join mouth, react, save, and report without exposing identity.",
+      "Use the five referral codes attached to your account.",
     ],
     future: [
-      "Predictions stay locked till you climb higher.",
-      "Future $MATA pathway stays roadmap-only for now.",
+      "Higher tiers bring stronger score presence and wider community weight.",
+      "Operator trust signals respond faster to steady clean contribution.",
     ],
-    nextUnlockLabel: "Area Voice opens prediction staking when predictions launch.",
+    nextUnlockLabel: "Area Voice adds stronger visibility in Mata and score.",
   },
   "Area Voice": {
     current: [
       "Steadier standing in Mata and clearer score momentum.",
-      "Still full access to post, react, comment, and vote.",
+      "Your clean gist pattern starts to carry more social weight.",
     ],
     future: [
-      "Prediction staking unlocks when predictions launch.",
-      "Future $MATA pathway stays roadmap-only, not live utility.",
+      "Street OG brings stronger trust standing and platform credibility.",
+      "Area Legend sharpens your visibility across the wider board.",
     ],
-    nextUnlockLabel: "Street OG adds trusted status and prediction creation access when active.",
+    nextUnlockLabel: "Street OG adds stronger trust standing in the board.",
   },
   "Street OG": {
     current: [
@@ -329,10 +317,10 @@ export const TIER_BENEFITS: Record<
       "Stronger leaderboard presence and steady community weight.",
     ],
     future: [
-      "Can create predictions when the predictions feature is active.",
-      "Future $MATA pathway remains roadmap language only.",
+      "Area Legend pushes your signal higher across Mata surfaces.",
+      "Referral success and clean contribution deepen your platform influence.",
     ],
-    nextUnlockLabel: "Area Legend brings stronger visibility and first future allocation signal.",
+    nextUnlockLabel: "Area Legend brings stronger visibility across the board.",
   },
   "Area Legend": {
     current: [
@@ -340,8 +328,8 @@ export const TIER_BENEFITS: Record<
       "Your Gists stay easier for the wider Mata to notice.",
     ],
     future: [
-      "First future token allocation signal when $MATA roadmap matures.",
-      "Prediction creation and advanced participation stay available when launched.",
+      "You already hold the highest public standing in the current product.",
+      "Future unlocks stay roadmap-only until a new feature is truly live.",
     ],
     nextUnlockLabel: "Top tier reached.",
   },

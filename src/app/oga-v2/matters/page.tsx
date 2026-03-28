@@ -160,18 +160,7 @@ export default async function OgaV2MattersPage({
         <div className="space-y-5">
           {selectedMatter ? (
             <>
-              <OgaV2Panel
-                title="Selected mata"
-                eyebrow="Inspect and act"
-                actions={
-                  <Link
-                    href={`/oga-v2/judgement-day?fromMatter=${selectedMatter.id}`}
-                    className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-semibold"
-                  >
-                    Create Judgement Day
-                  </Link>
-                }
-              >
+              <OgaV2Panel title="Selected mata" eyebrow="Inspect and act">
                 <div className="space-y-4">
                   <div className="flex flex-wrap gap-2">
                     <OgaV2Pill>{selectedMatter.tag}</OgaV2Pill>

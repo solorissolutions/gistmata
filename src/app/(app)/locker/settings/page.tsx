@@ -3,12 +3,10 @@ import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/blocks/page-header";
 import { BackButton } from "@/components/blocks/back-button";
 import { requireViewer } from "@/lib/server/auth/dal";
-import { getLockerBundle } from "@/lib/server/store";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function LockerSettingsPage() {
   const viewer = await requireViewer();
-  const data = await getLockerBundle(viewer.id);
 
   return (
     <div className="space-y-5">
@@ -26,12 +24,6 @@ export default async function LockerSettingsPage() {
             : `${viewer.homeState} only for now`}
         </p>
       </Card>
-      {data.recoveryCode ? (
-        <Card className="space-y-2">
-          <p className="muted-label">Seeded dev recovery</p>
-          <p className="font-bold tracking-[0.1em]">{data.recoveryCode}</p>
-        </Card>
-      ) : null}
       <form action={logoutAction}>
         <SubmitButton idleLabel="Log out" pendingLabel="Leaving..." />
       </form>

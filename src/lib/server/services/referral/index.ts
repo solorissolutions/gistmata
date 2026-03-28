@@ -3,18 +3,9 @@ import "server-only";
 import type { Viewer } from "@/lib/domain/types";
 import {
   createReferralBatch,
-  createUserReferralCode,
   fetchUserReferralBundle,
 } from "@/lib/server/repositories/referral-repository";
 import { fetchOgaDashboardSnapshot } from "@/lib/server/repositories/oga-repository";
-
-export async function generateReferralCode(viewer: Viewer) {
-  if (viewer.isOga) {
-    return createReferralBatch(viewer.id, 1);
-  }
-
-  return createUserReferralCode(viewer.id);
-}
 
 export async function generateReferralBatch(count: number, viewer: Viewer) {
   if (!viewer.isOga) {

@@ -1,10 +1,17 @@
+import { redirect } from "next/navigation";
+
 import { Card } from "@/components/ui/card";
 import { LogoLockup } from "@/components/blocks/logo-lockup";
 import { RecoveryForm } from "@/components/forms/recovery-form";
-import { getOgaRecoveryHint } from "@/lib/server/services/auth";
+import { getOperatorDashboardDestination } from "@/lib/server/operator-app";
+import { getCurrentUser } from "@/lib/server/services/auth";
 
 export default async function RecoveryPage() {
-  const hint = await getOgaRecoveryHint();
+  const viewer = await getCurrentUser();
+
+  if (viewer) {
+    redirect(viewer.isOga ? getOperatorDashboardDestination() : "/mata");
+  }
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-4 py-6">
@@ -18,12 +25,6 @@ export default async function RecoveryPage() {
           <p className="text-sm leading-6 text-[var(--gm-ink-soft)]">
             Use your Account Code and PIN.
           </p>
-          {hint ? (
-            <p className="text-sm leading-6 text-[var(--gm-ink-soft)]">
-              Local oga demo recovery:
-              <span className="font-semibold">{` ${hint.accountCode} / ${hint.pin}`}</span>.
-            </p>
-          ) : null}
         </div>
         <RecoveryForm />
       </Card>

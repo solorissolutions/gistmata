@@ -1,75 +1,43 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-const { createFollowUpRecord, fetchMatterBundle } = vi.hoisted(() => ({
-  createFollowUpRecord: vi.fn(),
-  fetchMatterBundle: vi.fn(),
-}));
-
-vi.mock("server-only", () => ({}));
-
-vi.mock("@/lib/server/repositories/matter-repository", () => ({
-  createFollowUpRecord,
-  fetchMatterBundle,
-}));
-
+import type { Viewer } from "@/lib/domain/types";
 import { createFollowUpGist } from "@/lib/server/services/matter";
+import { readStore, resetDemoStore } from "@/lib/server/store";
 
-describe("matter service Gemini first pass", () => {
-  beforeEach(() => {
-    createFollowUpRecord.mockReset();
-    createFollowUpRecord.mockResolvedValue("gst_followup");
-    fetchMatterBundle.mockReset();
-    fetchMatterBundle.mockResolvedValue({
-      gist: {
-        id: "parent_1",
-        body: "Light blink four times for this side this morning.",
-        tag: "NEPA",
-      },
-      followUps: [],
-      comments: [],
-    });
-    vi.stubGlobal("fetch", vi.fn());
-  });
+function toViewer(user: Awaited<ReturnType<typeof readStore>>["users"][number]): Viewer {
+  return {
+    id: user.id,
+    username: user.username,
+    tier: user.tier,
+    pointsBalance: user.pointsBalance,
+    homeState: user.homeState,
+    isOga: user.isOga,
+    comotTagged: user.comotTagged,
+    location: null,
+  };
+}
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
+describe("matter service first pass", () => {
+  beforeEach(async () => {
+    await resetDemoStore();
     delete process.env.GEMINI_API_KEY;
-    delete process.env.GEMINI_MODEL;
   });
 
-  it("quietly upgrades a generic follow-up relation when Gemini is confident", async () => {
-    process.env.GEMINI_API_KEY = "test-key";
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: JSON.stringify({
-                    block: false,
-                    blockConfidence: 0.03,
-                    blockReason: null,
-                    suggestedTag: "NEPA",
-                    tagConfidence: 0.88,
-                    suggestedRelationType: "confirm",
-                    relationConfidence: 0.84,
-                  }),
-                },
-              ],
-            },
-          },
-        ],
-      }),
-    } as Response);
+  it("persists the submitted follow-up relation when the draft passes safety checks", async () => {
+    const before = await readStore();
+    const viewerRecord = before.users.find((user) => !user.isOga);
+    const parentGist = before.gists.find((gist) => gist.status === "active");
 
-    await createFollowUpGist(
+    expect(viewerRecord).toBeTruthy();
+    expect(parentGist).toBeTruthy();
+    if (!viewerRecord || !parentGist) {
+      return;
+    }
+
+    const childGistId = await createFollowUpGist(
       {
-        parentGistId: "parent_1",
+        parentGistId: parentGist.id,
         relationType: "follow-up",
         body: "Same thing happen for my side too. Light no hold at all.",
-        tag: "NEPA",
+        tag: parentGist.tag,
         location: {
           displayLocality: "Yaba",
           areaBucket: "yaba",
@@ -79,22 +47,14 @@ describe("matter service Gemini first pass", () => {
           confidenceScore: 0.84,
         },
       },
-      {
-        id: "usr_2",
-        username: "replyer",
-        tier: "New Member",
-        pointsBalance: 20,
-        homeState: "Lagos",
-        isOga: false,
-        comotTagged: false,
-        location: null,
-      },
+      toViewer(viewerRecord),
     );
 
-    expect(createFollowUpRecord).toHaveBeenCalledWith(
-      expect.objectContaining({
-        relationType: "confirm",
-      }),
-    );
+    const after = await readStore();
+    const savedChild = after.gists.find((gist) => gist.id === childGistId);
+    const relation = after.gistRelations.find((entry) => entry.childGistId === childGistId);
+
+    expect(savedChild).toBeTruthy();
+    expect(relation?.relationType).toBe("follow-up");
   });
 });

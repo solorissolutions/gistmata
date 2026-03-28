@@ -61,7 +61,7 @@ export default async function OgaV2OverviewPage() {
           {
             label: "Inbox unread",
             value: compactNumber(overview.inboxUnread),
-            hint: `${compactNumber(overview.metrics.liveSurveyParticipation)} live survey votes now.`,
+            hint: `${compactNumber(overview.metrics.referralActivations7d)} referral activations in the last 7 days.`,
           },
         ]}
       />
@@ -157,25 +157,28 @@ export default async function OgaV2OverviewPage() {
         </div>
 
         <div className="space-y-5">
-          <OgaV2Panel title="Live surveys" eyebrow="Judgement Day">
+          <OgaV2Panel title="Recent activations" eyebrow="Referral pulse">
             <div className="space-y-3">
-              {overview.liveSurveys.length === 0 ? (
+              {overview.recentActivations.length === 0 ? (
                 <div className="text-sm leading-6 text-[var(--gm-ink-soft)]">
-                  No live survey at the moment.
+                  No referral activation yet.
                 </div>
               ) : (
-                overview.liveSurveys.map((survey) => (
+                overview.recentActivations.map((activation) => (
                   <div
-                    key={survey.id}
+                    key={activation.id}
                     className="rounded-[20px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <div className="font-semibold">{survey.question}</div>
-                      <OgaV2Pill tone="success">{survey.totalVotes} votes</OgaV2Pill>
+                      <div className="font-semibold">
+                        @{activation.referrerUsername} invited @{activation.referredUsername}
+                      </div>
+                      <OgaV2Pill tone="success">+{activation.pointsAwarded} pts</OgaV2Pill>
                     </div>
                     <div className="mt-1 text-xs leading-5 text-[var(--gm-ink-soft)]">
-                      Scope {survey.scopeValue ?? survey.scopeType} · closes{" "}
-                      {formatTimelineDate(survey.endsAt)}
+                      {activation.referredArea ? `${activation.referredArea} · ` : ""}
+                      {activation.referredState} · {activation.referralCode} ·{" "}
+                      {formatTimelineDate(activation.createdAt)}
                     </div>
                   </div>
                 ))
@@ -222,6 +225,35 @@ export default async function OgaV2OverviewPage() {
                 <span>Active codes</span>
                 <span className="font-semibold">{overview.referralUsage.activeCodes}</span>
               </div>
+              <div className="flex items-center justify-between">
+                <span>Total activations</span>
+                <span className="font-semibold">{overview.referralUsage.totalActivations}</span>
+              </div>
+            </div>
+          </OgaV2Panel>
+
+          <OgaV2Panel title="Growth leaders" eyebrow="Tree pressure">
+            <div className="space-y-3">
+              {overview.growthLeaders.length === 0 ? (
+                <div className="text-sm leading-6 text-[var(--gm-ink-soft)]">
+                  No referral chain pressure yet.
+                </div>
+              ) : (
+                overview.growthLeaders.map((entry) => (
+                  <div
+                    key={entry.userId}
+                    className="rounded-[20px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-semibold">@{entry.username}</span>
+                      <OgaV2Pill>{entry.count} descendants</OgaV2Pill>
+                    </div>
+                    <div className="mt-1 text-xs text-[var(--gm-ink-soft)]">
+                      {entry.directChildren} direct invites · +{entry.referralPointsAwarded} pts
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </OgaV2Panel>
 

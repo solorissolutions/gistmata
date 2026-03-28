@@ -1,5 +1,3 @@
-import { describe, it, expect } from "vitest";
-
 import { detectPersonalData } from "@/lib/domain/moderation";
 
 describe("detectPersonalData", () => {

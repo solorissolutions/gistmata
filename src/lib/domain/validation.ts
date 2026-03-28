@@ -126,16 +126,6 @@ export const reportSchema = z.object({
   gistId: z.string().trim().min(3),
 });
 
-export const surveySchema = z.object({
-  question: z.string().trim().min(8).max(140),
-  scopeType: z.enum(["nigeria", "state", "area"]),
-  scopeValue: z.string().trim().max(80).optional(),
-  endsAt: z.string().trim().min(4),
-  optionOne: z.string().trim().min(2).max(50),
-  optionTwo: z.string().trim().min(2).max(50),
-  optionThree: z.string().trim().min(2).max(50),
-});
-
 export const referralGenerateSchema = z.object({
   count: z.coerce.number().int().min(1).max(10),
 });

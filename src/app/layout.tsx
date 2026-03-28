@@ -1,6 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope, Newsreader } from "next/font/google";
 import { cookies } from "next/headers";
+
+import { ServiceWorkerRegistration } from "@/components/app-shell/service-worker-registration";
 import { ThemeProvider } from "@/components/app-shell/theme-provider";
 import { normalizeTheme, THEME_COOKIE_NAME } from "@/lib/theme";
 import "./globals.css";
@@ -22,6 +24,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
   title: "GistMata",
   description: "Anonymous, hyperlocal Mata for text-first gist across Nigeria.",
+  manifest: "/manifest.webmanifest",
   openGraph: {
     title: "GistMata",
     description: "Anonymous, hyperlocal Mata for text-first gist across Nigeria.",
@@ -33,6 +36,13 @@ export const metadata: Metadata = {
     description: "Anonymous, hyperlocal Mata for text-first gist across Nigeria.",
     images: ["/logo.png"],
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#050505",
 };
 
 export default async function RootLayout({
@@ -51,7 +61,10 @@ export default async function RootLayout({
       style={{ colorScheme: dataTheme }}
     >
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
-        <ThemeProvider initialTheme={dataTheme}>{children}</ThemeProvider>
+        <ThemeProvider initialTheme={dataTheme}>
+          <ServiceWorkerRegistration />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

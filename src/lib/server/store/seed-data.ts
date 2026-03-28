@@ -9,6 +9,10 @@ import type {
   UserRecord,
 } from "@/lib/domain/types";
 import {
+  OGA_ACCOUNT_CODE,
+  OGA_DEFAULT_PIN,
+} from "@/lib/server/auth/oga-credentials";
+import {
   createAccountCode,
   daysAgo,
   daysFromNow,
@@ -31,6 +35,8 @@ type SeedUserInput = {
   recoveryCode?: string;
   createdAt?: string;
 };
+
+const INITIAL_REFERRAL_SUPPLY = 5;
 
 const LOCATIONS: LocationSnapshot[] = NIGERIA_LOCATION_POINTS.map((point) => ({
   displayLocality: point.displayLocality,
@@ -80,6 +86,11 @@ function createUser(input: SeedUserInput): UserRecord {
   };
 }
 
+function buildSeedReferralCode(owner: UserRecord, slot: number) {
+  const ownerSeed = owner.usernameNormalized.slice(0, 4).toUpperCase().padEnd(4, "X");
+  return `${ownerSeed}-${String(slot).padStart(2, "0")}-${owner.id.slice(-4).toUpperCase()}`;
+}
+
 export function buildSeedStore(): AppStore {
   const oga = createUser({
     username: "oga",
@@ -88,9 +99,9 @@ export function buildSeedStore(): AppStore {
     gender: "Prefer not to say",
     area: locationByArea("Wuse 2"),
     points: 999,
-    pin: "091332",
+    pin: OGA_DEFAULT_PIN,
     isOga: true,
-    recoveryCode: "GM-0001-OG",
+    recoveryCode: OGA_ACCOUNT_CODE,
     createdAt: daysAgo(120),
   });
 
@@ -125,6 +136,110 @@ export function buildSeedStore(): AppStore {
   byUsername.YabaLine.referralCodeUsed = "ABJ-CARRY";
   byUsername.BendelPen.locationConfidence = 0.76;
   byUsername.RayfieldLink.locationConfidence = 0.78;
+
+  const referralCodes: AppStore["referralCodes"] = [];
+  const referralActivations: AppStore["referralActivations"] = [];
+
+  function seedReferralPool(
+    owner: UserRecord,
+    overrides: string[] = [],
+    total = INITIAL_REFERRAL_SUPPLY,
+  ) {
+    const pool = Array.from({ length: total }, (_, index) => ({
+      id: makeId("ref"),
+      code: overrides[index] ?? buildSeedReferralCode(owner, index + 1),
+      createdByUserId: owner.id,
+      usedByUserId: null,
+      usedAt: null,
+      createdAt: owner.createdAt,
+      expiresAt: owner.isOga ? daysFromNow(45) : null,
+      isActive: true,
+    }));
+
+    referralCodes.push(...pool);
+  }
+
+  function activateReferral(params: {
+    referrer: UserRecord;
+    referred: UserRecord;
+    code: string;
+    usedAt: string;
+  }) {
+    const record = referralCodes.find(
+      (entry) =>
+        entry.createdByUserId === params.referrer.id &&
+        entry.code === params.code,
+    );
+
+    if (!record) {
+      throw new Error(`Missing referral seed code: ${params.code}`);
+    }
+
+    record.usedByUserId = params.referred.id;
+    record.usedAt = params.usedAt;
+    record.isActive = false;
+    params.referred.referredByUserId = params.referrer.id;
+    params.referred.referralCodeUsed = params.code;
+
+    referralActivations.push({
+      id: makeId("rfa"),
+      referralCodeId: record.id,
+      referrerUserId: params.referrer.id,
+      referredUserId: params.referred.id,
+      pointsAwarded: 20,
+      createdAt: params.usedAt,
+    });
+  }
+
+  seedReferralPool(oga, [
+    "ABJ-ENTRY",
+    "KANO-LINE",
+    "COAL-WORD",
+    "GREEN-MATA",
+    "NAIJA-YARN",
+    "TOWN-SQUARE",
+  ], 6);
+  seedReferralPool(byUsername.CoalCityEye, ["COAL-CITY"]);
+  seedReferralPool(byUsername.WuseSignal, ["ABJ-CARRY"]);
+  for (const user of users.filter(
+    (entry) =>
+      entry.id !== oga.id &&
+      entry.id !== byUsername.CoalCityEye.id &&
+      entry.id !== byUsername.WuseSignal.id,
+  )) {
+    seedReferralPool(user);
+  }
+
+  activateReferral({
+    referrer: oga,
+    referred: byUsername.WuseSignal,
+    code: "ABJ-ENTRY",
+    usedAt: daysAgo(20),
+  });
+  activateReferral({
+    referrer: oga,
+    referred: byUsername.MallamLight,
+    code: "KANO-LINE",
+    usedAt: daysAgo(69),
+  });
+  activateReferral({
+    referrer: oga,
+    referred: byUsername.CoalCityEye,
+    code: "COAL-WORD",
+    usedAt: daysAgo(61),
+  });
+  activateReferral({
+    referrer: byUsername.CoalCityEye,
+    referred: byUsername.BendelPen,
+    code: "COAL-CITY",
+    usedAt: daysAgo(43),
+  });
+  activateReferral({
+    referrer: byUsername.WuseSignal,
+    referred: byUsername.YabaLine,
+    code: "ABJ-CARRY",
+    usedAt: daysAgo(19),
+  });
 
   const gists: GistRecord[] = [
     { id: makeId("gst"), authorUserId: byUsername.MallamLight.id, body: "Light blink four times for Sabon Gari this morning. Shop people don resume generator anthem again.", tag: "NEPA", areaDisplay: "Sabon Gari", areaBucket: "sabon-gari", admin2Name: "Kano Municipal", admin2Type: "LGA", stateName: "Kano", feedVisibilityScore: 0.74, translationText: "Power has been unstable in Sabon Gari this morning, and traders are back on generators.", commentsCount: 0, reactionsCount: 0, reportsCount: 0, followUpCount: 0, status: "active" as const, createdAt: minutesAgo(18) },
@@ -204,76 +319,12 @@ export function buildSeedStore(): AppStore {
     gist.reactionsCount = gistReactions.filter((reaction) => reaction.gistId === gist.id).length;
   }
 
-  const survey = { id: makeId("srv"), question: "This week for your area, wetin press pass?", createdByUserId: oga.id, scopeType: "nigeria" as const, scopeValue: null, status: "live" as const, pinned: true, startsAt: hoursAgo(12), endsAt: daysFromNow(2), createdAt: hoursAgo(14), pointsReward: 12 };
-  const surveyOptions = [
-    { id: makeId("opt"), surveyId: survey.id, label: "Power", votesCount: 0 },
-    { id: makeId("opt"), surveyId: survey.id, label: "Fuel", votesCount: 0 },
-    { id: makeId("opt"), surveyId: survey.id, label: "Road", votesCount: 0 },
-  ];
-  const surveyVotes = [
-    [byUsername.MallamLight.id, surveyOptions[0].id], [byUsername.BodijaBird.id, surveyOptions[2].id], [byUsername.PHWhisper.id, surveyOptions[1].id],
-    [byUsername.CoalCityEye.id, surveyOptions[0].id], [byUsername.AriariaWatch.id, surveyOptions[1].id], [byUsername.BendelPen.id, surveyOptions[2].id],
-    [byUsername.BarnawaMic.id, surveyOptions[0].id], [byUsername.RayfieldLink.id, surveyOptions[2].id], [byUsername.UyoWave.id, surveyOptions[1].id], [byUsername.WuseSignal.id, surveyOptions[0].id],
-  ].map(([userId, optionId], index) => ({ id: makeId(`svt${index}`), surveyId: survey.id, optionId, userId, createdAt: hoursAgo(10 - index) }));
-
-  for (const option of surveyOptions) {
-    option.votesCount = surveyVotes.filter((vote) => vote.optionId === option.id).length;
-  }
-
-  const archivedSurvey = {
-    id: makeId("srv"),
-    question: "Last week, did road repairs improve for your side?",
-    createdByUserId: oga.id,
-    scopeType: "nigeria" as const,
-    scopeValue: null,
-    status: "closed" as const,
-    pinned: false,
-    startsAt: daysAgo(8),
-    endsAt: daysAgo(5),
-    createdAt: daysAgo(9),
-    pointsReward: 8,
-  };
-  const archivedSurveyOptions = [
-    { id: makeId("opt"), surveyId: archivedSurvey.id, label: "Yes small", votesCount: 0 },
-    { id: makeId("opt"), surveyId: archivedSurvey.id, label: "No change", votesCount: 0 },
-    { id: makeId("opt"), surveyId: archivedSurvey.id, label: "Worse pass before", votesCount: 0 },
-  ];
-  const archivedSurveyVotes = [
-    [byUsername.IbaraTape.id, archivedSurveyOptions[1].id],
-    [byUsername.BodijaBird.id, archivedSurveyOptions[2].id],
-    [byUsername.WuseSignal.id, archivedSurveyOptions[0].id],
-    [byUsername.RayfieldLink.id, archivedSurveyOptions[1].id],
-  ].map(([userId, optionId], index) => ({
-    id: makeId(`svt-arch${index}`),
-    surveyId: archivedSurvey.id,
-    optionId,
-    userId,
-    createdAt: daysAgo(6),
-  }));
-
-  for (const option of archivedSurveyOptions) {
-    option.votesCount = archivedSurveyVotes.filter(
-      (vote) => vote.optionId === option.id,
-    ).length;
-  }
-
-  const referralCodes = [
-    { id: makeId("ref"), code: "GREEN-MATA", createdByUserId: oga.id, usedByUserId: null, usedAt: null, expiresAt: null, isActive: true },
-    { id: makeId("ref"), code: "NAIJA-YARN", createdByUserId: oga.id, usedByUserId: null, usedAt: null, expiresAt: null, isActive: true },
-    { id: makeId("ref"), code: "TOWN-SQUARE", createdByUserId: oga.id, usedByUserId: null, usedAt: null, expiresAt: daysFromNow(14), isActive: true },
-    { id: makeId("ref"), code: "ABJ-ENTRY", createdByUserId: oga.id, usedByUserId: byUsername.WuseSignal.id, usedAt: daysAgo(20), expiresAt: null, isActive: false },
-    { id: makeId("ref"), code: "COAL-WORD", createdByUserId: oga.id, usedByUserId: byUsername.CoalCityEye.id, usedAt: daysAgo(61), expiresAt: null, isActive: false },
-    { id: makeId("ref"), code: "COAL-CITY", createdByUserId: byUsername.CoalCityEye.id, usedByUserId: byUsername.BendelPen.id, usedAt: daysAgo(43), expiresAt: null, isActive: false },
-    { id: makeId("ref"), code: "ABJ-CARRY", createdByUserId: byUsername.WuseSignal.id, usedByUserId: byUsername.YabaLine.id, usedAt: daysAgo(19), expiresAt: null, isActive: false },
-    { id: makeId("ref"), code: "KANO-LINE", createdByUserId: oga.id, usedByUserId: byUsername.MallamLight.id, usedAt: daysAgo(69), expiresAt: null, isActive: false },
-  ];
-
   const alerts = [
     { id: makeId("alt"), userId: byUsername.WuseSignal.id, type: "comment" as const, title: "New comment on your Gist", body: "BodijaBird replied to your sanitation gist.", link: `/gist/${gists[12].id}`, readAt: null, createdAt: minutesAgo(22) },
-    { id: makeId("alt"), userId: byUsername.WuseSignal.id, type: "survey" as const, title: "Judgement Day don drop", body: "Vote the live survey and collect points.", link: `/judgement-day/${survey.id}`, readAt: null, createdAt: hoursAgo(11) },
+    { id: makeId("alt"), userId: byUsername.WuseSignal.id, type: "points" as const, title: "Referral landed", body: "+20 GistPoints from one successful invite.", link: "/locker/referrals", readAt: null, createdAt: daysAgo(19) },
     { id: makeId("alt"), userId: byUsername.WuseSignal.id, type: "points" as const, title: "Area Voice reached", body: "Your balance don pass 400 GistPoints.", link: "/score", readAt: hoursAgo(4), createdAt: daysAgo(2) },
     { id: makeId("alt"), userId: byUsername.YabaLine.id, type: "account" as const, title: "No full names, no numbers", body: "Keep your gist clean so Mata stay anonymous.", link: "/locker/privacy", readAt: null, createdAt: daysAgo(1) },
-    { id: makeId("alt"), userId: byUsername.BendelPen.id, type: "account" as const, title: "You don dey quiet", body: "Drop one clean gist or vote Judgement Day so people for your side hear from you again.", link: "/alerts", readAt: null, createdAt: daysAgo(6) },
+    { id: makeId("alt"), userId: byUsername.BendelPen.id, type: "account" as const, title: "You don dey quiet", body: "Drop one clean gist so people for your side hear from you again.", link: "/alerts", readAt: null, createdAt: daysAgo(6) },
     { id: makeId("alt"), userId: byUsername.CoalCityEye.id, type: "activity" as const, title: "Enugu gist dey move", body: "More replies dey gather around New Haven gist this evening.", link: `/gist/${gists[15].id}`, readAt: null, createdAt: hoursAgo(5) },
   ];
 
@@ -290,7 +341,7 @@ export function buildSeedStore(): AppStore {
       senderIdentity: "@WuseSignal",
       accountCodeReference: "4421",
       category: "Suggestion" as const,
-      body: "Prediction slot fit make sense for Abuja transport and rent topics once una ready.",
+      body: "Referral tree view for oga go help track which invite chains still dey active.",
       status: "unread" as const,
       createdAt: hoursAgo(6),
       readAt: null,
@@ -355,18 +406,6 @@ export function buildSeedStore(): AppStore {
     },
   ];
 
-  const predictionModules = [
-    {
-      id: makeId("prd"),
-      title: "Prediction lane coming to Mata",
-      body: "Soon, trusted members fit stake on local outcomes like rent movement, NEPA fixes, or fuel relief without exposing personal identity.",
-      kicker: "Predictions",
-      status: "live" as const,
-      createdByUserId: oga.id,
-      createdAt: hoursAgo(1),
-    },
-  ];
-
   const userPointsLedger: UserPointsLedgerRecord[] = users.flatMap(
     (user, index): UserPointsLedgerRecord[] => [
       {
@@ -388,8 +427,17 @@ export function buildSeedStore(): AppStore {
     ],
   );
   userPointsLedger.push({ id: makeId("pt"), userId: byUsername.WuseSignal.id, eventType: "milestone", pointsDelta: 25, metadata: { tier: "Area Voice" }, createdAt: daysAgo(2) });
-  userPointsLedger.push({ id: makeId("pt"), userId: byUsername.CoalCityEye.id, eventType: "voted-survey", pointsDelta: 12, metadata: { surveyId: survey.id }, createdAt: hoursAgo(9) });
   userPointsLedger.push({ id: makeId("pt"), userId: byUsername.BarnawaMic.id, eventType: "report-validated", pointsDelta: 6, metadata: { reportType: "personal-data" }, createdAt: daysAgo(3) });
+  for (const activation of referralActivations) {
+    userPointsLedger.push({
+      id: makeId("pt"),
+      userId: activation.referrerUserId,
+      eventType: "referral-activation",
+      pointsDelta: activation.pointsAwarded,
+      metadata: { referredUserId: activation.referredUserId },
+      createdAt: activation.createdAt,
+    });
+  }
 
   const gistReports = [
     { id: makeId("rpt"), gistId: gists[1].id, reporterUserId: byUsername.WuseSignal.id, type: "general" as const, reasonText: "Road repair gist still dey attract repeated complaints.", createdAt: hoursAgo(7) },
@@ -419,7 +467,7 @@ export function buildSeedStore(): AppStore {
   const locationCache = LOCATIONS.map((location, index) => ({ id: makeId(`loc${index}`), ...location, provider: "mock", providerRef: location.areaBucket, createdAt: daysAgo(45), updatedAt: daysAgo(3) }));
   const ogaActions = [
     { id: makeId("oga"), ogaUserId: oga.id, actionType: "seed_referrals_created", targetType: "referral_code", targetId: referralCodes[0].id, notes: "Initial launch batch", createdAt: daysAgo(21) },
-    { id: makeId("oga"), ogaUserId: oga.id, actionType: "survey_pinned", targetType: "survey", targetId: survey.id, notes: "Weekly platform survey", createdAt: hoursAgo(12) },
+    { id: makeId("oga"), ogaUserId: oga.id, actionType: "referral_tree_reviewed", targetType: "referral_activation", targetId: referralActivations[0]?.id ?? referralCodes[0].id, notes: "Growth review", createdAt: hoursAgo(12) },
     { id: makeId("oga"), ogaUserId: oga.id, actionType: "trust_queue_reviewed", targetType: "report_batch", targetId: gistReports[0].id, notes: "Morning sweep", createdAt: hoursAgo(6) },
     { id: makeId("oga"), ogaUserId: oga.id, actionType: "gist_pinned", targetType: "gist", targetId: gists[12].id, notes: "priority 1", createdAt: hoursAgo(9) },
   ];
@@ -429,21 +477,18 @@ export function buildSeedStore(): AppStore {
     sessions: [],
     joinDrafts: [],
     referralCodes,
+    referralActivations,
     accountRecoveryEvents: [],
     gists,
     gistRelations: [],
     gistReactions,
     gistComments,
     gistReports,
-    surveys: [survey, archivedSurvey],
-    surveyOptions: [...surveyOptions, ...archivedSurveyOptions],
-    surveyVotes: [...surveyVotes, ...archivedSurveyVotes],
     alerts,
     savedGists,
     contactOgaMessages,
     intelSubmissions,
     pinnedGists,
-    predictionModules,
     userPointsLedger,
     userTrustProfiles,
     ogaActions,

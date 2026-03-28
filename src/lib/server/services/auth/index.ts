@@ -62,7 +62,7 @@ export async function requireUser() {
   const viewer = await getCurrentUser();
 
   if (!viewer) {
-    redirect("/login");
+    redirect("/");
   }
 
   return viewer;
@@ -74,7 +74,8 @@ export async function canAccessOgaDashboard(viewer: Viewer | null) {
 
 export async function requireOga() {
   const viewer = await getCurrentUser();
-  const demoAccessEnabled = process.env.ALLOW_OGA_DEMO_ACCESS === "true";
+  const demoAccessEnabled =
+    process.env.NODE_ENV !== "production" && process.env.ALLOW_OGA_DEMO_ACCESS === "true";
 
   if (demoAccessEnabled) {
     const ogaViewer = await getDevelopmentOgaViewer();
@@ -127,20 +128,4 @@ export async function logoutUser() {
   const token = await getCurrentSession();
   await deleteUserSession(token);
   await clearSessionCookie();
-}
-
-export async function getOgaRecoveryHint() {
-  const demoHintEnabled =
-    process.env.NODE_ENV !== "production" || process.env.ALLOW_OGA_DEMO_ACCESS === "true";
-
-  if (!demoHintEnabled) {
-    return null;
-  }
-
-  const oga = await getEnsuredOgaUserRecord();
-
-  return {
-    accountCode: oga?.devRecoveryCode ?? "GM-0001-OG",
-    pin: "091332",
-  };
 }

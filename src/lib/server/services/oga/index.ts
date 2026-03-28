@@ -46,11 +46,6 @@ export async function getOgaInboxBundle() {
   return snapshot.inbox;
 }
 
-export async function getOgaJudgementDayBundle() {
-  const snapshot = await fetchOgaDashboardSnapshot();
-  return snapshot.judgementDay;
-}
-
 export async function getOgaBroadcastBundle() {
   const snapshot = await fetchOgaDashboardSnapshot();
   return snapshot.broadcast;

@@ -46,36 +46,28 @@ export type GistRelationType =
 
 export type CommentStatus = "active" | "removed";
 
-export type SurveyStatus = "draft" | "live" | "closed";
-
-export type SurveyScopeType = "nigeria" | "state" | "area";
-
 export type AlertType =
   | "comment"
   | "activity"
-  | "survey"
   | "points"
   | "account";
 
 export type AlertGroup =
   | "Comments"
   | "Mata activity"
-  | "Judgement Day"
   | "Points"
   | "Account / inactivity";
 
 export type GistPointsEvent =
   | "join"
+  | "referral-activation"
   | "drop-gist"
   | "received-reaction"
   | "received-comment"
-  | "voted-survey"
   | "milestone"
   | "report-validated";
 
 export type FeatureFlagKey =
-  | "predictions"
-  | "promoted_gist"
   | "dark_mode"
   | "translation_visibility"
   | "advanced_moderation_provider";
@@ -98,8 +90,6 @@ export type IntelMethod =
 export type IntelUrgency = "routine" | "watch" | "urgent";
 
 export type IntelSubmissionStatus = "new" | "reviewing" | "logged";
-
-export type PredictionModuleStatus = "draft" | "live" | "closed";
 
 export interface LocationSnapshot {
   displayLocality: string;
@@ -156,6 +146,7 @@ export interface JoinDraftRecord {
   state: string | null;
   ageRange: AgeRangeValue | null;
   gender: GenderValue | null;
+  reservedReferralCodes: string[];
   createdAt: string;
 }
 
@@ -165,8 +156,18 @@ export interface ReferralCodeRecord {
   createdByUserId: string;
   usedByUserId: string | null;
   usedAt: string | null;
+  createdAt: string;
   expiresAt: string | null;
   isActive: boolean;
+}
+
+export interface ReferralActivationRecord {
+  id: string;
+  referralCodeId: string;
+  referrerUserId: string;
+  referredUserId: string;
+  pointsAwarded: number;
+  createdAt: string;
 }
 
 export interface GistRecord {
@@ -218,35 +219,6 @@ export interface GistReportRecord {
   resolvedAt?: string | null;
   resolvedByOgaUserId?: string | null;
   resolutionNotes?: string | null;
-  createdAt: string;
-}
-
-export interface SurveyRecord {
-  id: string;
-  question: string;
-  createdByUserId: string;
-  scopeType: SurveyScopeType;
-  scopeValue: string | null;
-  status: SurveyStatus;
-  pinned: boolean;
-  startsAt: string;
-  endsAt: string;
-  createdAt: string;
-  pointsReward: number;
-}
-
-export interface SurveyOptionRecord {
-  id: string;
-  surveyId: string;
-  label: string;
-  votesCount: number;
-}
-
-export interface SurveyVoteRecord {
-  id: string;
-  surveyId: string;
-  optionId: string;
-  userId: string;
   createdAt: string;
 }
 
@@ -303,16 +275,6 @@ export interface PinnedGistRecord {
   pinnedByUserId: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface PredictionModuleRecord {
-  id: string;
-  title: string;
-  body: string;
-  kicker: string;
-  status: PredictionModuleStatus;
-  createdByUserId: string;
-  createdAt: string;
 }
 
 export interface UserPointsLedgerRecord {
@@ -375,6 +337,7 @@ export interface AppStore {
   sessions: SessionRecord[];
   joinDrafts: JoinDraftRecord[];
   referralCodes: ReferralCodeRecord[];
+  referralActivations: ReferralActivationRecord[];
   accountRecoveryEvents: Array<{
     id: string;
     userId: string;
@@ -386,15 +349,11 @@ export interface AppStore {
   gistReactions: GistReactionRecord[];
   gistComments: GistCommentRecord[];
   gistReports: GistReportRecord[];
-  surveys: SurveyRecord[];
-  surveyOptions: SurveyOptionRecord[];
-  surveyVotes: SurveyVoteRecord[];
   alerts: AlertRecord[];
   savedGists: SavedGistRecord[];
   contactOgaMessages: ContactOgaMessageRecord[];
   intelSubmissions: IntelSubmissionRecord[];
   pinnedGists: PinnedGistRecord[];
-  predictionModules: PredictionModuleRecord[];
   userPointsLedger: UserPointsLedgerRecord[];
   userTrustProfiles: UserTrustProfileRecord[];
   ogaActions: OgaActionRecord[];
@@ -446,34 +405,6 @@ export interface CommentView {
   body: string;
   createdAt: string;
   isAuthor: boolean;
-}
-
-export interface SurveyView {
-  id: string;
-  question: string;
-  scopeLabel: string;
-  status: SurveyStatus;
-  pinned: boolean;
-  startsAt: string;
-  endsAt: string;
-  hasVoted: boolean;
-  viewerOptionId: string | null;
-  options: Array<{
-    id: string;
-    label: string;
-    votesCount: number;
-    percentage: number;
-  }>;
-  totalVotes: number;
-  pointsReward: number;
-}
-
-export interface PredictionModuleView {
-  id: string;
-  title: string;
-  body: string;
-  kicker: string;
-  status: PredictionModuleStatus;
 }
 
 export interface LeaderboardEntry {

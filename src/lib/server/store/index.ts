@@ -20,12 +20,19 @@ import type {
   GistCardView,
   LeaderboardEntry,
   LocationSnapshot,
-  PredictionModuleView,
-  SurveyView,
   UserRecord,
   Viewer,
 } from "@/lib/domain/types";
 import { normalizeUsername } from "@/lib/utils";
+import {
+  OGA_ACCOUNT_CODE,
+  OGA_DEFAULT_HOME_STATE,
+  OGA_DEFAULT_PIN,
+  OGA_DEFAULT_POINTS,
+  OGA_DEFAULT_TIER,
+  OGA_USERNAME,
+  OGA_USERNAME_NORMALIZED,
+} from "@/lib/server/auth/oga-credentials";
 import {
   isPostgresStoreConfigured,
   loadPostgresStore,
@@ -45,16 +52,26 @@ import {
 } from "@/lib/server/store/helpers";
 
 const DEFAULT_REFERRAL_ALLOWANCE = 5;
-
-const OGA_USERNAME = "oga";
-const OGA_USERNAME_NORMALIZED = "oga";
-const OGA_ACCOUNT_CODE = "GM-0001-OG";
-const OGA_DEFAULT_PIN = "091332";
+const REFERRAL_REWARD_POINTS = 20;
 
 let writeChain = Promise.resolve();
+let inMemoryStore: AppStore | null = null;
 
-async function getLegacyStorePersistence() {
-  return import("@/lib/server/store/legacy-file-store");
+function cloneStore(store: AppStore) {
+  return normalizeStore(structuredClone(store));
+}
+
+function canUseInMemoryStore() {
+  return process.env.NODE_ENV === "test" || process.env.VITEST === "true";
+}
+
+function getInMemoryStore() {
+  if (!canUseInMemoryStore()) {
+    throw new Error("DATABASE_URL or DIRECT_URL is required outside test runs.");
+  }
+
+  inMemoryStore ??= buildSeedStore();
+  return inMemoryStore;
 }
 
 export async function ensureOgaAccount() {
@@ -89,11 +106,11 @@ export async function ensureOgaAccount() {
         usernameNormalized: OGA_USERNAME_NORMALIZED,
         pinHash: hashSecretValue(OGA_DEFAULT_PIN),
         accountCodeHash: hashSecretValue(OGA_ACCOUNT_CODE),
-        homeState: "FCT",
+        homeState: OGA_DEFAULT_HOME_STATE,
         ageRange: "35-44",
         gender: "Prefer not to say",
-        tier: getTierByPoints(999),
-        pointsBalance: 999,
+        tier: OGA_DEFAULT_TIER,
+        pointsBalance: OGA_DEFAULT_POINTS,
         isOga: true,
         comotTagged: false,
         createdAt: now,
@@ -120,7 +137,7 @@ export async function ensureOgaAccount() {
     candidate.devRecoveryCode = OGA_ACCOUNT_CODE;
 
     if (!candidate.homeState) {
-      candidate.homeState = "FCT";
+      candidate.homeState = OGA_DEFAULT_HOME_STATE;
     }
 
     if (!candidate.createdAt) {
@@ -160,6 +177,7 @@ function normalizeStore(raw: Partial<AppStore>): AppStore {
     sessions: coerceArray(raw.sessions),
     joinDrafts: coerceArray(raw.joinDrafts),
     referralCodes: coerceArray(raw.referralCodes),
+    referralActivations: coerceArray(raw.referralActivations),
     accountRecoveryEvents: coerceArray(raw.accountRecoveryEvents),
     gists: coerceArray(raw.gists),
     gistRelations: coerceArray(raw.gistRelations),
@@ -173,15 +191,11 @@ function normalizeStore(raw: Partial<AppStore>): AppStore {
       resolutionNotes: null,
       ...report,
     })),
-    surveys: coerceArray(raw.surveys),
-    surveyOptions: coerceArray(raw.surveyOptions),
-    surveyVotes: coerceArray(raw.surveyVotes),
     alerts: coerceArray(raw.alerts),
     savedGists: coerceArray(raw.savedGists),
     contactOgaMessages: coerceArray(raw.contactOgaMessages),
     intelSubmissions: coerceArray(raw.intelSubmissions),
     pinnedGists: coerceArray(raw.pinnedGists),
-    predictionModules: coerceArray(raw.predictionModules),
     userPointsLedger: coerceArray(raw.userPointsLedger),
     userTrustProfiles: coerceArray(raw.userTrustProfiles),
     ogaActions: coerceArray(raw.ogaActions),
@@ -202,15 +216,15 @@ export async function getUserReferralsBundle(userId: string) {
     .filter((code) => code.createdByUserId === userId)
     .slice()
     .sort((left, right) => {
-      const leftDate = left.usedAt ?? left.expiresAt ?? "";
-      const rightDate = right.usedAt ?? right.expiresAt ?? "";
+      const leftDate = left.createdAt ?? left.usedAt ?? left.expiresAt ?? "";
+      const rightDate = right.createdAt ?? right.usedAt ?? right.expiresAt ?? "";
       return rightDate.localeCompare(leftDate);
     });
 
   const allowance = user.isOga ? Infinity : DEFAULT_REFERRAL_ALLOWANCE;
   const usedCount = issued.filter((code) => Boolean(code.usedByUserId)).length;
   const issuedCount = issued.length;
-  const leftCount = user.isOga ? Infinity : Math.max(0, allowance - issuedCount);
+  const leftCount = user.isOga ? Infinity : Math.max(0, allowance - usedCount);
 
   return {
     viewer: toViewer(user),
@@ -226,64 +240,12 @@ export async function getUserReferralsBundle(userId: string) {
   };
 }
 
-export async function generateUserReferralCode(userId: string) {
-  return mutateStore((store) => {
-    const user = getUserById(store, userId);
-
-    if (!user) {
-      throw new Error("User no dey.");
-    }
-
-    if (user.isOga) {
-      throw new Error("Use oga Growth dashboard for referrals.");
-    }
-
-    const issuedCount = store.referralCodes.filter(
-      (code) => code.createdByUserId === userId,
-    ).length;
-
-    if (issuedCount >= DEFAULT_REFERRAL_ALLOWANCE) {
-      throw new Error("You don finish your lifetime invites.");
-    }
-
-    let codeValue = "";
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-      const candidate = createReferralCode();
-      const exists = store.referralCodes.some(
-        (code) => code.code.toLowerCase() === candidate.toLowerCase(),
-      );
-      if (!exists) {
-        codeValue = candidate;
-        break;
-      }
-    }
-
-    if (!codeValue) {
-      throw new Error("Referral code no generate. Try again.");
-    }
-
-    const record = {
-      id: makeId("ref"),
-      code: codeValue,
-      createdByUserId: userId,
-      usedByUserId: null,
-      usedAt: null,
-      expiresAt: null,
-      isActive: true,
-    };
-
-    store.referralCodes.unshift(record);
-    return record;
-  });
-}
-
 export async function readStore(): Promise<AppStore> {
   if (isPostgresStoreConfigured()) {
     return normalizeStore(await loadPostgresStore());
   }
 
-  const legacy = await getLegacyStorePersistence();
-  return normalizeStore(await legacy.loadLegacyFileStore());
+  return cloneStore(getInMemoryStore());
 }
 
 export async function mutateStore<T>(
@@ -294,10 +256,9 @@ export async function mutateStore<T>(
   }
 
   const next = writeChain.then(async () => {
-    const store = await readStore();
+    const store = cloneStore(getInMemoryStore());
     const result = await operation(store);
-    const legacy = await getLegacyStorePersistence();
-    await legacy.saveLegacyFileStore(store);
+    inMemoryStore = normalizeStore(store);
     return result;
   });
 
@@ -317,12 +278,69 @@ export async function resetDemoStore() {
     return;
   }
 
-  const legacy = await getLegacyStorePersistence();
-  await legacy.resetLegacyFileStore(seeded);
+  if (!canUseInMemoryStore()) {
+    throw new Error("DATABASE_URL or DIRECT_URL is required outside test runs.");
+  }
+
+  inMemoryStore = normalizeStore(seeded);
 }
 
 function getUserById(store: AppStore, userId: string) {
   return store.users.find((user) => user.id === userId) ?? null;
+}
+
+function getReservedReferralValues(store: AppStore) {
+  return new Set(
+    store.joinDrafts.flatMap((draft) =>
+      Array.isArray(draft.reservedReferralCodes)
+        ? draft.reservedReferralCodes.map((code) => code.toLowerCase())
+        : [],
+    ),
+  );
+}
+
+function generateUniqueReferralValue(
+  store: AppStore,
+  extraReserved: Set<string>,
+) {
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    const candidate = createReferralCode();
+    const normalized = candidate.toLowerCase();
+    const exists = store.referralCodes.some(
+      (code) => code.code.toLowerCase() === normalized,
+    );
+
+    if (!exists && !extraReserved.has(normalized)) {
+      extraReserved.add(normalized);
+      return candidate;
+    }
+  }
+
+  throw new Error("Referral code no generate. Try again.");
+}
+
+function reserveReferralCodes(store: AppStore, count: number) {
+  const reserved = getReservedReferralValues(store);
+  return Array.from({ length: count }, () =>
+    generateUniqueReferralValue(store, reserved),
+  );
+}
+
+function createReferralCodeRecords(
+  ownerId: string,
+  codes: string[],
+  now: string,
+): AppStore["referralCodes"] {
+  return codes.map((code) => ({
+    id: makeId("ref"),
+    code,
+    createdByUserId: ownerId,
+    usedByUserId: null,
+    usedAt: null,
+    createdAt: now,
+    expiresAt: null,
+    isActive: true,
+  }));
 }
 
 function getTrustProfile(store: AppStore, userId: string) {
@@ -378,7 +396,7 @@ function addAlert(
   store: AppStore,
   input: {
     userId: string;
-    type: "comment" | "activity" | "survey" | "points" | "account";
+    type: "comment" | "activity" | "points" | "account";
     title: string;
     body: string;
     link: string;
@@ -401,10 +419,10 @@ function addPoints(
   userId: string,
   eventType:
     | "join"
+    | "referral-activation"
     | "drop-gist"
     | "received-reaction"
     | "received-comment"
-    | "voted-survey"
     | "milestone"
     | "report-validated",
   pointsDelta: number,
@@ -571,135 +589,6 @@ function buildGistCardView(
   };
 }
 
-function getSurveyView(
-  store: AppStore,
-  surveyId: string,
-  viewerId?: string | null,
-): SurveyView | null {
-  const survey = store.surveys.find((entry) => entry.id === surveyId);
-
-  if (!survey) {
-    return null;
-  }
-
-  const viewerUser = viewerId ? getUserById(store, viewerId) : null;
-
-  if (viewerUser && !isViewerWithinSurveyScope(toViewer(viewerUser), survey)) {
-    return null;
-  }
-
-  const options = store.surveyOptions.filter((entry) => entry.surveyId === surveyId);
-  const totalVotes = options.reduce((sum, option) => sum + option.votesCount, 0);
-  const viewerVote = viewerId
-    ? store.surveyVotes.find(
-        (vote) => vote.surveyId === surveyId && vote.userId === viewerId,
-      ) ?? null
-    : null;
-  const runtimeStatus = getRuntimeSurveyStatus(survey);
-
-  return {
-    id: survey.id,
-    question: survey.question,
-    scopeLabel:
-      survey.scopeType === "nigeria"
-        ? "Nigeria"
-        : survey.scopeValue ?? survey.scopeType,
-    status: runtimeStatus,
-    pinned: survey.pinned,
-    startsAt: survey.startsAt,
-    endsAt: survey.endsAt,
-    hasVoted: Boolean(viewerVote),
-    viewerOptionId: viewerVote?.optionId ?? null,
-    options: options.map((option) => ({
-      id: option.id,
-      label: option.label,
-      votesCount: option.votesCount,
-      percentage: totalVotes === 0 ? 0 : option.votesCount / totalVotes,
-    })),
-    totalVotes,
-    pointsReward: survey.pointsReward,
-  };
-}
-
-function getRuntimeSurveyStatus(
-  survey: AppStore["surveys"][number],
-): AppStore["surveys"][number]["status"] {
-  if (survey.status !== "live") {
-    return survey.status;
-  }
-
-  if (parseISO(survey.endsAt) <= new Date()) {
-    return "closed";
-  }
-
-  return "live";
-}
-
-function normalizeScopeValue(value: string | null | undefined) {
-  return value?.trim().toLowerCase() ?? "";
-}
-
-function isViewerWithinSurveyScope(
-  viewer: Viewer,
-  survey: AppStore["surveys"][number],
-) {
-  if (survey.scopeType === "nigeria") {
-    return true;
-  }
-
-  const scopeValue = normalizeScopeValue(survey.scopeValue);
-
-  if (!scopeValue) {
-    return false;
-  }
-
-  if (survey.scopeType === "state") {
-    return normalizeScopeValue(viewer.homeState) === scopeValue;
-  }
-
-  if (!viewer.location) {
-    return false;
-  }
-
-  const areaCandidates = [
-    viewer.location.displayLocality,
-    viewer.location.areaBucket,
-    viewer.location.admin2Name,
-    `${viewer.location.displayLocality}, ${viewer.homeState}`,
-    `${viewer.location.admin2Name}, ${viewer.homeState}`,
-  ].map((value) => normalizeScopeValue(value));
-
-  return areaCandidates.includes(scopeValue);
-}
-
-function getPredictionModuleView(
-  store: AppStore,
-): PredictionModuleView | null {
-  const predictionsEnabled = store.featureFlags.find(
-    (flag) => flag.key === "predictions",
-  )?.enabled;
-
-  if (!predictionsEnabled) {
-    return null;
-  }
-
-  const predictionModule = store.predictionModules.find(
-    (entry) => entry.status === "live",
-  );
-
-  if (!predictionModule) {
-    return null;
-  }
-
-  return {
-    id: predictionModule.id,
-    title: predictionModule.title,
-    body: predictionModule.body,
-    kicker: predictionModule.kicker,
-    status: predictionModule.status,
-  };
-}
-
 export async function getFeatureFlags() {
   const store = await readStore();
 
@@ -743,6 +632,7 @@ export async function beginJoinDraft(code: string) {
       state: null,
       ageRange: null,
       gender: null,
+      reservedReferralCodes: [],
       createdAt: new Date().toISOString(),
     };
 
@@ -793,6 +683,13 @@ export async function setJoinDraftPin(joinDraftId: string, pin: string) {
       draft.accountCodeHash = hashSecretValue(accountCode);
     }
 
+    if (!draft.reservedReferralCodes?.length) {
+      draft.reservedReferralCodes = reserveReferralCodes(
+        store,
+        DEFAULT_REFERRAL_ALLOWANCE,
+      );
+    }
+
     return draft;
   });
 }
@@ -828,7 +725,8 @@ export async function completeJoinDraft(joinDraftId: string) {
       !draft.accountCodeHash ||
       !draft.state ||
       !draft.ageRange ||
-      !draft.gender
+      !draft.gender ||
+      !draft.reservedReferralCodes?.length
     ) {
       throw new Error("Complete the join steps first.");
     }
@@ -841,6 +739,8 @@ export async function completeJoinDraft(joinDraftId: string) {
       throw new Error("That referral code don finish.");
     }
 
+    const now = new Date().toISOString();
+
     const user: UserRecord = {
       id: makeId("usr"),
       username: draft.username,
@@ -851,11 +751,11 @@ export async function completeJoinDraft(joinDraftId: string) {
       ageRange: draft.ageRange,
       gender: draft.gender,
       tier: "New Member",
-      pointsBalance: 20,
+      pointsBalance: 0,
       isOga: false,
       comotTagged: false,
-      createdAt: new Date().toISOString(),
-      lastActiveAt: new Date().toISOString(),
+      createdAt: now,
+      lastActiveAt: now,
       homeAreaDisplay: null,
       homeAreaBucket: null,
       homeAdmin2Name: null,
@@ -868,8 +768,22 @@ export async function completeJoinDraft(joinDraftId: string) {
 
     store.users.unshift(user);
     referral.usedByUserId = user.id;
-    referral.usedAt = new Date().toISOString();
+    referral.usedAt = now;
     referral.isActive = false;
+    const issuedReferralCodes = createReferralCodeRecords(
+      user.id,
+      draft.reservedReferralCodes,
+      now,
+    );
+    store.referralCodes.unshift(...issuedReferralCodes);
+    store.referralActivations.unshift({
+      id: makeId("rfa"),
+      referralCodeId: referral.id,
+      referrerUserId: referral.createdByUserId,
+      referredUserId: user.id,
+      pointsAwarded: REFERRAL_REWARD_POINTS,
+      createdAt: now,
+    });
     store.joinDrafts.splice(draftIndex, 1);
 
     store.userTrustProfiles.unshift({
@@ -879,16 +793,33 @@ export async function completeJoinDraft(joinDraftId: string) {
       fakeLocationStrikes: 0,
       validReportCount: 0,
       invalidReportCount: 0,
-      lastUpdatedAt: new Date().toISOString(),
+      lastUpdatedAt: now,
     });
 
-    addPoints(store, user.id, "join", 0, { flow: "referral-gated" });
+    addPoints(store, user.id, "join", 20, { flow: "referral-gated" });
+    addPoints(
+      store,
+      referral.createdByUserId,
+      "referral-activation",
+      REFERRAL_REWARD_POINTS,
+      {
+        referralCode: referral.code,
+        referredUserId: user.id,
+      },
+    );
     addAlert(store, {
       userId: user.id,
       type: "account",
       title: "Welcome to Mata",
       body: "No full names, no phone numbers, no addresses.",
       link: "/mata",
+    });
+    addAlert(store, {
+      userId: referral.createdByUserId,
+      type: "points",
+      title: "Referral landed",
+      body: `+${REFERRAL_REWARD_POINTS} GistPoints from one successful invite.`,
+      link: "/locker/referrals",
     });
 
     return { userId: user.id, accountCode: draft.accountCode ?? "" };
@@ -1039,7 +970,6 @@ export async function getFeedBundle(params: {
   const trustByUser = new Map(
     store.userTrustProfiles.map((profile) => [profile.userId, profile.trustScore]),
   );
-  const predictionSlot = getPredictionModuleView(store);
 
   let gists = store.gists.filter((gist) => gist.status === "active");
 
@@ -1119,13 +1049,6 @@ export async function getFeedBundle(params: {
   const hotspotArea =
     buildTopCounts(gists.map((gist) => gist.areaDisplay), 1)[0]?.[0] ??
     (viewer.location?.displayLocality ?? viewer.homeState);
-
-  const activeSurvey = store.surveys.find(
-    (survey) =>
-      getRuntimeSurveyStatus(survey) === "live" &&
-      survey.pinned &&
-      isViewerWithinSurveyScope(viewer, survey),
-  );
   const pinnedGistIds = new Set(pinnedEntries.map((entry) => entry.gistId));
   const pinnedGists = pinnedEntries
     .slice()
@@ -1146,10 +1069,6 @@ export async function getFeedBundle(params: {
     sort: params.sort ?? "smart",
     gists: feedGists,
     pinnedGists,
-    activeSurvey: activeSurvey
-      ? getSurveyView(store, activeSurvey.id, params.viewerId)
-      : null,
-    predictionSlot,
     feedSummary: {
       totalCount: feedGists.length,
       freshCount: recentRanked.length,
@@ -1220,15 +1139,6 @@ export async function getGistBundle(gistId: string, viewerId: string) {
       ),
       nearbyGists,
     },
-    activeSurvey: (() => {
-      const survey = store.surveys.find(
-        (entry) =>
-          getRuntimeSurveyStatus(entry) === "live" &&
-          entry.pinned &&
-          isViewerWithinSurveyScope(viewer, entry),
-      );
-      return survey ? getSurveyView(store, survey.id, viewerId) : null;
-    })(),
     followUps: (store.gistRelations ?? [])
       .filter((rel) => rel.parentGistId === gistId)
       .sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))
@@ -1869,68 +1779,6 @@ export async function unpinGist(params: {
   });
 }
 
-export async function voteInSurvey(params: {
-  viewerId: string;
-  surveyId: string;
-  optionId: string;
-}) {
-  return mutateStore((store) => {
-    const survey = store.surveys.find((entry) => entry.id === params.surveyId);
-    const user = getUserById(store, params.viewerId);
-
-    if (!survey || !user || getRuntimeSurveyStatus(survey) !== "live") {
-      throw new Error("That Judgement Day vote no open now.");
-    }
-
-    if (!isViewerWithinSurveyScope(toViewer(user), survey)) {
-      throw new Error("This Judgement Day no dey open for your side.");
-    }
-
-    const existing = store.surveyVotes.find(
-      (vote) =>
-        vote.surveyId === params.surveyId && vote.userId === params.viewerId,
-    );
-
-    if (existing) {
-      throw new Error("You don vote already.");
-    }
-
-    const option = store.surveyOptions.find(
-      (entry) => entry.id === params.optionId && entry.surveyId === survey.id,
-    );
-
-    if (!option) {
-      throw new Error("Pick one option first.");
-    }
-
-    store.surveyVotes.unshift({
-      id: makeId("svt"),
-      surveyId: params.surveyId,
-      optionId: params.optionId,
-      userId: params.viewerId,
-      createdAt: new Date().toISOString(),
-    });
-    option.votesCount += 1;
-    touchUser(user);
-    addPoints(store, params.viewerId, "voted-survey", survey.pointsReward, {
-      surveyId: params.surveyId,
-    });
-    addAlert(store, {
-      userId: params.viewerId,
-      type: "points",
-      title: "Survey vote collected",
-      body: `+${survey.pointsReward} GistPoints from Judgement Day.`,
-      link: "/score",
-    });
-
-    return {
-      surveyId: survey.id,
-      optionId: option.id,
-      pointsReward: survey.pointsReward,
-    };
-  });
-}
-
 export async function getAlertsBundle(userId: string) {
   const store = await readStore();
   const user = getUserById(store, userId);
@@ -2001,30 +1849,12 @@ export async function getLockerBundle(userId: string) {
       .map((entry) => store.gists.find((gist) => gist.id === entry.gistId) ?? null)
       .filter((gist): gist is AppStore["gists"][number] => Boolean(gist))
       .map((gist) => buildGistCardView(store, gist, userId)),
-    recoveryCode: user.devRecoveryCode ?? null,
-  };
-}
-
-export async function getSurveyBundle(surveyId: string, viewerId: string) {
-  const store = await readStore();
-  const user = getUserById(store, viewerId);
-
-  if (!user) {
-    throw new Error("User no dey.");
-  }
-
-  return {
-    viewer: toViewer(user),
-    survey: getSurveyView(store, surveyId, viewerId),
   };
 }
 
 export async function getOgaOverviewBundle() {
   const store = await readStore();
   const activeSince = subDays(new Date(), 7);
-  const liveSurvey = store.surveys.find(
-    (entry) => getRuntimeSurveyStatus(entry) === "live",
-  );
 
   const topStates = Object.entries(
     store.gists.reduce<Record<string, number>>((accumulator, gist) => {
@@ -2099,7 +1929,6 @@ export async function getOgaOverviewBundle() {
       ).length,
       cachedLocations: store.locationCache.length,
     },
-    liveSurvey: liveSurvey ? getSurveyView(store, liveSurvey.id, null) : null,
   };
 }
 
@@ -2261,6 +2090,9 @@ export async function getOgaGrowthBundle() {
   const nonOgaUsers = store.users.filter((user) => !user.isOga);
   const usedCodes = store.referralCodes.filter((code) => code.usedByUserId);
   const activeCodes = store.referralCodes.filter((code) => code.isActive);
+  const recentActivations = store.referralActivations
+    .slice()
+    .sort((left, right) => +new Date(right.createdAt) - +new Date(left.createdAt));
 
   return {
     activeCodes,
@@ -2291,6 +2123,13 @@ export async function getOgaGrowthBundle() {
     expiringSoon: activeCodes.filter(
       (code) => code.expiresAt && parseISO(code.expiresAt) < subDays(new Date(), -7),
     ),
+    recentActivations: recentActivations.map((entry) => ({
+      ...entry,
+      referrerUsername: getUserById(store, entry.referrerUserId)?.username ?? "unknown",
+      referredUsername: getUserById(store, entry.referredUserId)?.username ?? "unknown",
+      referralCode:
+        store.referralCodes.find((code) => code.id === entry.referralCodeId)?.code ?? "unknown",
+    })),
     referralLineage: nonOgaUsers
       .filter((user) => user.referredByUserId)
       .map((user) => ({
@@ -2308,12 +2147,15 @@ export async function getOgaGrowthBundle() {
 
 export async function generateReferralCodes(ogaId: string, count: number) {
   return mutateStore((store) => {
+    const reserved = getReservedReferralValues(store);
+    const now = new Date().toISOString();
     const codes = Array.from({ length: count }, () => ({
       id: makeId("ref"),
-      code: createReferralCode(),
+      code: generateUniqueReferralValue(store, reserved),
       createdByUserId: ogaId,
       usedByUserId: null,
       usedAt: null,
+      createdAt: now,
       expiresAt: daysFromNow(30),
       isActive: true,
     }));
@@ -2408,129 +2250,4 @@ export async function getOgaSettingsBundle() {
       .sort((left, right) => +new Date(right.createdAt) - +new Date(left.createdAt))
       .slice(0, 20),
   };
-}
-
-export async function createSurvey(params: {
-  ogaId: string;
-  question: string;
-  scopeType: "nigeria" | "state" | "area";
-  scopeValue?: string;
-  endsAt: string;
-  options: [string, string, string];
-}) {
-  return mutateStore((store) => {
-    const surveyId = makeId("srv");
-    store.surveys.forEach((survey) => {
-      if (survey.pinned) {
-        survey.pinned = false;
-      }
-    });
-
-    store.surveys.unshift({
-      id: surveyId,
-      question: params.question,
-      createdByUserId: params.ogaId,
-      scopeType: params.scopeType,
-      scopeValue: params.scopeValue?.trim() || null,
-      status: "live",
-      pinned: true,
-      startsAt: new Date().toISOString(),
-      endsAt: new Date(params.endsAt).toISOString(),
-      createdAt: new Date().toISOString(),
-      pointsReward: 12,
-    });
-
-    params.options.forEach((option) => {
-      store.surveyOptions.push({
-        id: makeId("opt"),
-        surveyId,
-        label: option,
-        votesCount: 0,
-      });
-    });
-
-    store.ogaActions.unshift({
-      id: makeId("oga"),
-      ogaUserId: params.ogaId,
-      actionType: "survey_created",
-      targetType: "survey",
-      targetId: surveyId,
-      notes: params.scopeType,
-      createdAt: new Date().toISOString(),
-    });
-
-    const createdSurvey = store.surveys[0]!;
-
-    for (const user of store.users.filter(
-      (entry) => !entry.isOga && isViewerWithinSurveyScope(toViewer(entry), createdSurvey),
-    )) {
-      addAlert(store, {
-        userId: user.id,
-        type: "survey",
-        title: "Judgement Day don drop",
-        body: params.question,
-        link: `/judgement-day/${surveyId}`,
-      });
-    }
-  });
-}
-
-export async function setSurveyPinned(params: {
-  ogaId: string;
-  surveyId: string;
-  pinned: boolean;
-}) {
-  return mutateStore((store) => {
-    const survey = store.surveys.find((entry) => entry.id === params.surveyId);
-
-    if (!survey) {
-      throw new Error("Survey no show.");
-    }
-
-    if (params.pinned) {
-      store.surveys.forEach((entry) => {
-        entry.pinned = false;
-      });
-    }
-
-    survey.pinned = params.pinned;
-    store.ogaActions.unshift({
-      id: makeId("oga"),
-      ogaUserId: params.ogaId,
-      actionType: params.pinned ? "survey_pinned" : "survey_unpinned",
-      targetType: "survey",
-      targetId: survey.id,
-      notes: null,
-      createdAt: new Date().toISOString(),
-    });
-  });
-}
-
-export async function setSurveyStatus(params: {
-  ogaId: string;
-  surveyId: string;
-  status: "draft" | "live" | "closed";
-}) {
-  return mutateStore((store) => {
-    const survey = store.surveys.find((entry) => entry.id === params.surveyId);
-
-    if (!survey) {
-      throw new Error("Survey no show.");
-    }
-
-    survey.status = params.status;
-    if (params.status !== "live") {
-      survey.pinned = false;
-    }
-
-    store.ogaActions.unshift({
-      id: makeId("oga"),
-      ogaUserId: params.ogaId,
-      actionType: `survey_${params.status}`,
-      targetType: "survey",
-      targetId: survey.id,
-      notes: null,
-      createdAt: new Date().toISOString(),
-    });
-  });
 }

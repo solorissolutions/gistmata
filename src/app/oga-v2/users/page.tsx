@@ -18,7 +18,7 @@ export default async function OgaV2UsersPage({
       <OgaV2Header
         eyebrow="Oga v2"
         title="Users"
-        description="This is platform oversight, not a profile browser. Search users, inspect trust status, contribution pattern, referral position, and last-active behavior in platform terms."
+        description="This is platform oversight, not a profile browser. Search users, inspect trust status, contribution pattern, referral position, and invite-chain impact in platform terms."
       />
 
       <OgaV2MetricStrip
@@ -160,10 +160,24 @@ export default async function OgaV2UsersPage({
                       <span className="font-semibold">{selected.trustScore}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>Referral status</span>
+                      <span>Joined by</span>
                       <span className="font-semibold">
-                        {selected.referralCodeUsed ? "joined by referral" : "seed / root"}
+                        {selected.referralParentUsername
+                          ? `@${selected.referralParentUsername}`
+                          : "seed / root"}
                       </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Direct invites</span>
+                      <span className="font-semibold">{selected.referralChildrenCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Total descendants</span>
+                      <span className="font-semibold">{selected.totalReferralDescendants}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Referral points</span>
+                      <span className="font-semibold">{selected.referralPointsAwarded}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Last active</span>
@@ -207,8 +221,53 @@ export default async function OgaV2UsersPage({
                       <span className="font-semibold">{selected.referralChildrenCount}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>Active referral supply</span>
-                      <span className="font-semibold">{selected.activeReferralSupply}</span>
+                      <span>Unused referral supply</span>
+                      <span className="font-semibold">{selected.unusedReferralSupply}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Used referral supply</span>
+                      <span className="font-semibold">{selected.usedReferralSupply}</span>
+                    </div>
+                  </div>
+                </div>
+              </OgaV2Panel>
+
+              <OgaV2Panel title="Referral position" eyebrow="Invite chain">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span>Tree depth</span>
+                      <span className="font-semibold">{selected.treeDepth}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Joined with code</span>
+                      <span className="font-semibold">
+                        {selected.referralCodeUsed ?? "seed / root"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Parent inviter</span>
+                      <span className="font-semibold">
+                        {selected.referralParentUsername
+                          ? `@${selected.referralParentUsername}`
+                          : "none"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span>Created codes</span>
+                      <span className="font-semibold">
+                        {selected.usedReferralSupply + selected.unusedReferralSupply}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Unused codes</span>
+                      <span className="font-semibold">{selected.unusedReferralSupply}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Referral points</span>
+                      <span className="font-semibold">{selected.referralPointsAwarded}</span>
                     </div>
                   </div>
                 </div>
@@ -225,6 +284,67 @@ export default async function OgaV2UsersPage({
                       <div key={label} className="flex items-center justify-between text-sm">
                         <span>{label}</span>
                         <span className="font-semibold">{count}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </OgaV2Panel>
+
+              <OgaV2Panel title="Recent referral codes" eyebrow="Supply issued">
+                <div className="space-y-3">
+                  {selected.recentReferralCodes.length === 0 ? (
+                    <div className="text-sm leading-6 text-[var(--gm-ink-soft)]">
+                      This user has not issued referral supply yet.
+                    </div>
+                  ) : (
+                    selected.recentReferralCodes.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="rounded-[20px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-semibold">{entry.code}</span>
+                          <OgaV2Pill
+                            tone={
+                              entry.status === "used"
+                                ? "success"
+                                : entry.status === "unused"
+                                  ? "neutral"
+                                  : "warning"
+                            }
+                          >
+                            {entry.status}
+                          </OgaV2Pill>
+                        </div>
+                        <div className="mt-1 text-xs text-[var(--gm-ink-soft)]">
+                          {entry.usedByUsername ? `used by @${entry.usedByUsername}` : "not yet used"} ·{" "}
+                          {formatTimelineDate(entry.createdAt)}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </OgaV2Panel>
+
+              <OgaV2Panel title="Recent successful invites" eyebrow="Activation log">
+                <div className="space-y-3">
+                  {selected.recentReferralActivations.length === 0 ? (
+                    <div className="text-sm leading-6 text-[var(--gm-ink-soft)]">
+                      No successful referral recorded for this user yet.
+                    </div>
+                  ) : (
+                    selected.recentReferralActivations.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="rounded-[20px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-semibold">@{entry.referredUsername}</span>
+                          <OgaV2Pill tone="success">+{entry.pointsAwarded}</OgaV2Pill>
+                        </div>
+                        <div className="mt-1 text-xs text-[var(--gm-ink-soft)]">
+                          {entry.referredState} · {entry.referralCode} · {formatTimelineDate(entry.createdAt)}
+                        </div>
                       </div>
                     ))
                   )}

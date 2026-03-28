@@ -6,18 +6,12 @@ import {
   broadcastSchema,
   INITIAL_ACTION_STATE,
   referralGenerateSchema,
-  surveySchema,
   type ActionState,
 } from "@/lib/domain/validation";
 import { actionError, actionSuccess, fromZodError } from "@/lib/server/action-state";
 import { createBroadcast } from "@/lib/server/services/alerts";
 import { requireOgaV2 } from "@/lib/server/services/auth";
 import { generateReferralBatch } from "@/lib/server/services/referral";
-import {
-  createSurvey,
-  setSurveyPinned,
-  setSurveyStatus,
-} from "@/lib/server/services/oga/survey-ops-service";
 import {
   archiveMessage,
   markMessageRead,
@@ -95,88 +89,6 @@ export async function unpinGistV2Action(formData: FormData) {
     "/oga-v2/mata",
     "/oga-v2/matters",
     "/mata",
-  ]);
-}
-
-export async function createSurveyV2Action(
-  _state: ActionState = INITIAL_ACTION_STATE,
-  formData: FormData,
-): Promise<ActionState> {
-  void _state;
-  const surveyType = String(formData.get("surveyType") ?? "single-choice");
-
-  if (surveyType !== "single-choice") {
-    return actionError(
-      "The current public Judgement Day runtime only publishes single-choice polls. The other survey modes are staged in oga-v2 but still need runtime wiring.",
-    );
-  }
-
-  const oga = await requireOgaV2();
-  const validated = surveySchema.safeParse({
-    question: formData.get("question"),
-    scopeType: formData.get("scopeType"),
-    scopeValue: formData.get("scopeValue"),
-    endsAt: formData.get("endsAt"),
-    optionOne: formData.get("optionOne"),
-    optionTwo: formData.get("optionTwo"),
-    optionThree: formData.get("optionThree"),
-  });
-
-  if (!validated.success) {
-    return fromZodError(validated.error);
-  }
-
-  try {
-    await createSurvey({
-      question: validated.data.question,
-      scopeType: validated.data.scopeType,
-      scopeValue: validated.data.scopeValue,
-      endsAt: validated.data.endsAt,
-      options: [
-        validated.data.optionOne,
-        validated.data.optionTwo,
-        validated.data.optionThree,
-      ],
-    }, oga);
-    revalidateMany([
-      "/oga/judgement-day",
-      "/oga-v2",
-      "/oga-v2/judgement-day",
-      "/mata",
-      "/alerts",
-    ]);
-    return actionSuccess("Judgement Day don publish.");
-  } catch (error) {
-    return actionError(error instanceof Error ? error.message : "Survey no publish.");
-  }
-}
-
-export async function toggleSurveyPinV2Action(formData: FormData) {
-  const oga = await requireOgaV2();
-  const surveyId = String(formData.get("surveyId") ?? "");
-  const pinned = String(formData.get("pinned") ?? "") === "true";
-
-  await setSurveyPinned(surveyId, pinned, oga);
-  revalidateMany([
-    "/oga/judgement-day",
-    "/oga-v2",
-    "/oga-v2/judgement-day",
-    "/mata",
-  ]);
-}
-
-export async function setSurveyStatusV2Action(formData: FormData) {
-  const oga = await requireOgaV2();
-  const surveyId = String(formData.get("surveyId") ?? "");
-  const status = String(formData.get("status") ?? "") as "draft" | "live" | "closed";
-
-  await setSurveyStatus(surveyId, status, oga);
-  revalidateMany([
-    "/oga/judgement-day",
-    "/oga-v2",
-    "/oga-v2/judgement-day",
-    "/mata",
-    "/alerts",
   ]);
 }
 

@@ -1,5 +1,3 @@
-import { describe, it, expect } from "vitest";
-
 import { evaluateOgaAccess } from "@/lib/server/auth/access";
 
 describe("evaluateOgaAccess", () => {
@@ -9,7 +7,7 @@ describe("evaluateOgaAccess", () => {
     expect(result.allowed).toBe(false);
     if (!result.allowed) {
       expect(result.reason).toBe("anonymous");
-      expect(result.redirectTo).toBe("/locker/recovery");
+      expect(result.redirectTo).toBe("/oga-login");
     }
   });
 

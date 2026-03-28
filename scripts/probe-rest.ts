@@ -16,7 +16,7 @@ async function main() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  for (const table of ["users", "join_drafts", "contact_messages", "gists", "surveys"]) {
+  for (const table of ["users", "join_drafts", "referral_activations", "contact_messages", "gists"]) {
     const { error, count } = await supabase
       .from(table)
       .select("*", { count: "exact", head: true });

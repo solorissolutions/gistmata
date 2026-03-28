@@ -46,14 +46,6 @@ export interface ContactOgaMessageInput {
   };
 }
 
-export interface SurveyCreationInput {
-  question: string;
-  scopeType: "nigeria" | "state" | "area";
-  scopeValue?: string;
-  endsAt: string;
-  options: [string, string, string];
-}
-
 export interface BroadcastCreationInput {
   audience: "all" | "inactive" | "state";
   stateName?: string;

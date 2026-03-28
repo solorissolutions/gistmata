@@ -9,9 +9,6 @@ type OrderInput = {
 };
 
 const DELETE_ORDER = [
-  ["survey_votes", "id"],
-  ["survey_options", "id"],
-  ["surveys", "id"],
   ["gist_reactions", "id"],
   ["gist_comments", "id"],
   ["gist_reports", "id"],
@@ -21,7 +18,6 @@ const DELETE_ORDER = [
   ["pinned_gists", "gist_id"],
   ["alerts", "id"],
   ["contact_messages", "id"],
-  ["prediction_modules", "id"],
   ["user_points_ledger", "id"],
   ["user_trust_profiles", "user_id"],
   ["oga_actions", "id"],
@@ -29,6 +25,7 @@ const DELETE_ORDER = [
   ["sessions", "id"],
   ["join_drafts", "id"],
   ["account_recovery_events", "id"],
+  ["referral_activations", "id"],
   ["referral_codes", "id"],
   ["gists", "id"],
   ["feature_flags", "key"],
@@ -88,21 +85,18 @@ export async function loadSupabaseRestStore(): Promise<AppStore> {
     sessions,
     joinDrafts,
     referralCodes,
+    referralActivations,
     accountRecoveryEvents,
     gists,
     gistRelations,
     gistReactions,
     gistComments,
     gistReports,
-    surveys,
-    surveyOptions,
-    surveyVotes,
     alerts,
     savedGists,
     contactMessages,
     intelSubmissions,
     pinnedGists,
-    predictionModules,
     userPointsLedger,
     userTrustProfiles,
     ogaActions,
@@ -112,22 +106,19 @@ export async function loadSupabaseRestStore(): Promise<AppStore> {
     selectAll("users", { column: "created_at", ascending: false }),
     selectAll("sessions", { column: "created_at", ascending: false }),
     selectAll("join_drafts", { column: "created_at", ascending: false }),
-    selectAll("referral_codes", { column: "code" }),
+    selectAll("referral_codes", { column: "created_at", ascending: false }),
+    selectAll("referral_activations", { column: "created_at", ascending: false }),
     selectAll("account_recovery_events", { column: "created_at", ascending: false }),
     selectAll("gists", { column: "created_at", ascending: false }),
     selectAll("gist_relations", { column: "created_at", ascending: false }),
     selectAll("gist_reactions", { column: "created_at", ascending: false }),
     selectAll("gist_comments", { column: "created_at", ascending: false }),
     selectAll("gist_reports", { column: "created_at", ascending: false }),
-    selectAll("surveys", { column: "created_at", ascending: false }),
-    selectAll("survey_options", { column: "label" }),
-    selectAll("survey_votes", { column: "created_at", ascending: false }),
     selectAll("alerts", { column: "created_at", ascending: false }),
     selectAll("saved_gists", { column: "created_at", ascending: false }),
     selectAll("contact_messages", { column: "created_at", ascending: false }),
     selectAll("intel_submissions", { column: "created_at", ascending: false }),
     selectAll("pinned_gists", { column: "priority" }),
-    selectAll("prediction_modules", { column: "created_at", ascending: false }),
     selectAll("user_points_ledger", { column: "created_at", ascending: false }),
     selectAll("user_trust_profiles", { column: "last_updated_at", ascending: false }),
     selectAll("oga_actions", { column: "created_at", ascending: false }),
@@ -181,6 +172,9 @@ export async function loadSupabaseRestStore(): Promise<AppStore> {
       state: row.state ? String(row.state) : null,
       ageRange: row.age_range ?? null,
       gender: row.gender ?? null,
+      reservedReferralCodes: Array.isArray(row.reserved_referral_codes)
+        ? row.reserved_referral_codes.map((value: unknown) => String(value))
+        : [],
       createdAt: toIsoString(row.created_at),
     })),
     referralCodes: referralCodes.map((row) => ({
@@ -189,8 +183,17 @@ export async function loadSupabaseRestStore(): Promise<AppStore> {
       createdByUserId: String(row.created_by_user_id),
       usedByUserId: row.used_by_user_id ? String(row.used_by_user_id) : null,
       usedAt: toNullableIsoString(row.used_at),
+      createdAt: toIsoString(row.created_at),
       expiresAt: toNullableIsoString(row.expires_at),
       isActive: Boolean(row.is_active),
+    })),
+    referralActivations: referralActivations.map((row) => ({
+      id: String(row.id),
+      referralCodeId: String(row.referral_code_id),
+      referrerUserId: String(row.referrer_user_id),
+      referredUserId: String(row.referred_user_id),
+      pointsAwarded: toNumber(row.points_awarded),
+      createdAt: toIsoString(row.created_at),
     })),
     accountRecoveryEvents: accountRecoveryEvents.map((row) => ({
       id: String(row.id),
@@ -255,32 +258,6 @@ export async function loadSupabaseRestStore(): Promise<AppStore> {
       resolutionNotes: row.resolution_notes ? String(row.resolution_notes) : null,
       createdAt: toIsoString(row.created_at),
     })),
-    surveys: surveys.map((row) => ({
-      id: String(row.id),
-      question: String(row.question),
-      createdByUserId: String(row.created_by_user_id),
-      scopeType: row.scope_type,
-      scopeValue: row.scope_value ? String(row.scope_value) : null,
-      status: row.status,
-      pinned: Boolean(row.pinned),
-      startsAt: toIsoString(row.starts_at),
-      endsAt: toIsoString(row.ends_at),
-      createdAt: toIsoString(row.created_at),
-      pointsReward: toNumber(row.points_reward),
-    })),
-    surveyOptions: surveyOptions.map((row) => ({
-      id: String(row.id),
-      surveyId: String(row.survey_id),
-      label: String(row.label),
-      votesCount: toNumber(row.votes_count),
-    })),
-    surveyVotes: surveyVotes.map((row) => ({
-      id: String(row.id),
-      surveyId: String(row.survey_id),
-      optionId: String(row.option_id),
-      userId: String(row.user_id),
-      createdAt: toIsoString(row.created_at),
-    })),
     alerts: alerts.map((row) => ({
       id: String(row.id),
       userId: String(row.user_id),
@@ -336,15 +313,6 @@ export async function loadSupabaseRestStore(): Promise<AppStore> {
       pinnedByUserId: String(row.pinned_by_user_id),
       createdAt: toIsoString(row.created_at),
       updatedAt: toIsoString(row.updated_at),
-    })),
-    predictionModules: predictionModules.map((row) => ({
-      id: String(row.id),
-      title: String(row.title),
-      body: String(row.body),
-      kicker: String(row.kicker),
-      status: row.status,
-      createdByUserId: String(row.created_by_user_id),
-      createdAt: toIsoString(row.created_at),
     })),
     userPointsLedger: userPointsLedger.map((row) => ({
       id: String(row.id),
@@ -478,8 +446,21 @@ export async function replaceSupabaseRestStore(store: AppStore) {
       created_by_user_id: entry.createdByUserId,
       used_by_user_id: entry.usedByUserId,
       used_at: entry.usedAt,
+      created_at: entry.createdAt,
       expires_at: entry.expiresAt,
       is_active: entry.isActive,
+    })),
+  );
+
+  await insertRows(
+    "referral_activations",
+    store.referralActivations.map((entry) => ({
+      id: entry.id,
+      referral_code_id: entry.referralCodeId,
+      referrer_user_id: entry.referrerUserId,
+      referred_user_id: entry.referredUserId,
+      points_awarded: entry.pointsAwarded,
+      created_at: entry.createdAt,
     })),
   );
 
@@ -497,6 +478,7 @@ export async function replaceSupabaseRestStore(store: AppStore) {
       state: entry.state,
       age_range: entry.ageRange,
       gender: entry.gender,
+      reserved_referral_codes: entry.reservedReferralCodes,
       created_at: entry.createdAt,
     })),
   );
@@ -599,44 +581,6 @@ export async function replaceSupabaseRestStore(store: AppStore) {
   );
 
   await insertRows(
-    "surveys",
-    store.surveys.map((entry) => ({
-      id: entry.id,
-      question: entry.question,
-      created_by_user_id: entry.createdByUserId,
-      scope_type: entry.scopeType,
-      scope_value: entry.scopeValue,
-      status: entry.status,
-      pinned: entry.pinned,
-      starts_at: entry.startsAt,
-      ends_at: entry.endsAt,
-      created_at: entry.createdAt,
-      points_reward: entry.pointsReward,
-    })),
-  );
-
-  await insertRows(
-    "survey_options",
-    store.surveyOptions.map((entry) => ({
-      id: entry.id,
-      survey_id: entry.surveyId,
-      label: entry.label,
-      votes_count: entry.votesCount,
-    })),
-  );
-
-  await insertRows(
-    "survey_votes",
-    store.surveyVotes.map((entry) => ({
-      id: entry.id,
-      survey_id: entry.surveyId,
-      option_id: entry.optionId,
-      user_id: entry.userId,
-      created_at: entry.createdAt,
-    })),
-  );
-
-  await insertRows(
     "alerts",
     store.alerts.map((entry) => ({
       id: entry.id,
@@ -703,19 +647,6 @@ export async function replaceSupabaseRestStore(store: AppStore) {
       pinned_by_user_id: entry.pinnedByUserId,
       created_at: entry.createdAt,
       updated_at: entry.updatedAt,
-    })),
-  );
-
-  await insertRows(
-    "prediction_modules",
-    store.predictionModules.map((entry) => ({
-      id: entry.id,
-      title: entry.title,
-      body: entry.body,
-      kicker: entry.kicker,
-      status: entry.status,
-      created_by_user_id: entry.createdByUserId,
-      created_at: entry.createdAt,
     })),
   );
 

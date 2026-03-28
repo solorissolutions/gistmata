@@ -118,7 +118,7 @@ export default async function OgaV2IntelCollectionPage() {
 
           <OgaV2Panel title="Guardrails" eyebrow="Deliberate exclusions">
             <div className="space-y-3 text-sm leading-6 text-[var(--gm-ink-soft)]">
-              <p>Intel collects only platform-native signals: public content, referrals, trust reports, survey participation, and operator inbox submissions.</p>
+              <p>Intel collects only platform-native signals: public content, referrals, trust reports, and operator inbox submissions.</p>
               <p>It does not collect hidden device telemetry, credentials, third-party messages, or covert location trails.</p>
               <p>This keeps GistMata aligned with anonymous-first product values while still giving oga an early-warning layer for abuse and coordinated misuse.</p>
             </div>

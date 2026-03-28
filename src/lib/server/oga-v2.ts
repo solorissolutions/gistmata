@@ -29,7 +29,7 @@ export const OGA_V2_ROUTE_MAP = [
     href: "/oga-v2/matters",
     label: "Matas",
     shortLabel: "Matas",
-    description: "Mata chains, pinning, removal, and survey triggers.",
+    description: "Mata chains, pinning, removal, and front-page control.",
   },
   {
     href: "/oga-v2/trust",
@@ -42,12 +42,6 @@ export const OGA_V2_ROUTE_MAP = [
     label: "Users",
     shortLabel: "Users",
     description: "Platform oversight without turning into a profile browser.",
-  },
-  {
-    href: "/oga-v2/judgement-day",
-    label: "Judgement Day",
-    shortLabel: "Survey",
-    description: "Survey creation, live control, and result inspection.",
   },
   {
     href: "/oga-v2/growth",
@@ -108,22 +102,6 @@ function isSince(dateString: string, since: Date) {
   return parseISO(dateString) >= since;
 }
 
-function sum(values: number[]) {
-  return values.reduce((accumulator, value) => accumulator + value, 0);
-}
-
-function getSurveyRuntimeStatus(survey: AppStore["surveys"][number], now: Date) {
-  if (survey.status !== "live") {
-    return survey.status;
-  }
-
-  if (parseISO(survey.endsAt) <= now) {
-    return "closed" as const;
-  }
-
-  return "live" as const;
-}
-
 function getTrustProfile(store: AppStore, userId: string) {
   return store.userTrustProfiles.find((entry) => entry.userId === userId) ?? null;
 }
@@ -170,6 +148,32 @@ function buildSelectedId<T extends { id: string }>(
   return items[0]?.id ?? null;
 }
 
+function incrementCount(map: Map<string, number>, key: string, amount = 1) {
+  map.set(key, (map.get(key) ?? 0) + amount);
+}
+
+function getDescendantCount(
+  userId: string,
+  childrenByUserId: Map<string, string[]>,
+  memo: Map<string, number>,
+): number {
+  const cached = memo.get(userId);
+
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const children = childrenByUserId.get(userId) ?? [];
+  const total = children.reduce(
+    (accumulator, childId) =>
+      accumulator + 1 + getDescendantCount(childId, childrenByUserId, memo),
+    0,
+  );
+
+  memo.set(userId, total);
+  return total;
+}
+
 export async function getOgaV2DashboardSnapshot() {
   noStore();
   const store = await readStore();
@@ -197,8 +201,6 @@ export async function getOgaV2DashboardSnapshot() {
   const commentsByGistId = new Map<string, AppStore["gistComments"]>();
   const reportsByGistId = new Map<string, AppStore["gistReports"]>();
   const reactionsByGistId = new Map<string, AppStore["gistReactions"]>();
-  const surveyOptionsBySurveyId = new Map<string, AppStore["surveyOptions"]>();
-  const surveyVotesBySurveyId = new Map<string, AppStore["surveyVotes"]>();
   const intelByContactMessageId = new Map(
     store.intelSubmissions.map((submission) => [submission.contactMessageId, submission]),
   );
@@ -231,18 +233,6 @@ export async function getOgaV2DashboardSnapshot() {
     const current = reactionsByGistId.get(reaction.gistId) ?? [];
     current.push(reaction);
     reactionsByGistId.set(reaction.gistId, current);
-  }
-
-  for (const option of store.surveyOptions) {
-    const current = surveyOptionsBySurveyId.get(option.surveyId) ?? [];
-    current.push(option);
-    surveyOptionsBySurveyId.set(option.surveyId, current);
-  }
-
-  for (const vote of store.surveyVotes) {
-    const current = surveyVotesBySurveyId.get(vote.surveyId) ?? [];
-    current.push(vote);
-    surveyVotesBySurveyId.set(vote.surveyId, current);
   }
 
   const matterChains = store.gists
@@ -417,6 +407,46 @@ export async function getOgaV2DashboardSnapshot() {
       };
     });
 
+  const codeById = new Map(store.referralCodes.map((code) => [code.id, code]));
+  const referralCodesByCreatorId = new Map<string, AppStore["referralCodes"]>();
+  const referralChildrenByUserId = new Map<string, string[]>();
+  const referralActivationsByReferrerId = new Map<string, AppStore["referralActivations"]>();
+  const referralActivationByReferredUserId = new Map<
+    string,
+    AppStore["referralActivations"][number]
+  >();
+  const referralActivationByCodeId = new Map<
+    string,
+    AppStore["referralActivations"][number]
+  >();
+  const referralPointsByUserId = new Map<string, number>();
+  const descendantCountMemo = new Map<string, number>();
+
+  for (const code of store.referralCodes) {
+    const current = referralCodesByCreatorId.get(code.createdByUserId) ?? [];
+    current.push(code);
+    referralCodesByCreatorId.set(code.createdByUserId, current);
+  }
+
+  for (const user of store.users) {
+    if (!user.referredByUserId) {
+      continue;
+    }
+
+    const current = referralChildrenByUserId.get(user.referredByUserId) ?? [];
+    current.push(user.id);
+    referralChildrenByUserId.set(user.referredByUserId, current);
+  }
+
+  for (const activation of store.referralActivations) {
+    const current = referralActivationsByReferrerId.get(activation.referrerUserId) ?? [];
+    current.push(activation);
+    referralActivationsByReferrerId.set(activation.referrerUserId, current);
+    referralActivationByReferredUserId.set(activation.referredUserId, activation);
+    referralActivationByCodeId.set(activation.referralCodeId, activation);
+    incrementCount(referralPointsByUserId, activation.referrerUserId, activation.pointsAwarded);
+  }
+
   const userOversight = users
     .map((user) => {
       const trust = trustByUserId.get(user.id) ?? null;
@@ -434,10 +464,60 @@ export async function getOgaV2DashboardSnapshot() {
         const gist = gistById.get(report.gistId);
         return gist?.authorUserId === user.id;
       });
-      const referralsCreated = store.referralCodes.filter(
-        (code) => code.createdByUserId === user.id,
+      const referralsCreated = (referralCodesByCreatorId.get(user.id) ?? [])
+        .slice()
+        .sort((left, right) => +new Date(right.createdAt) - +new Date(left.createdAt));
+      const referredUsers = (referralChildrenByUserId.get(user.id) ?? [])
+        .map((childId) => userById.get(childId) ?? null)
+        .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+      const referrer = user.referredByUserId ? userById.get(user.referredByUserId) ?? null : null;
+      const directReferralCount = referredUsers.length;
+      const totalReferralDescendants = getDescendantCount(
+        user.id,
+        referralChildrenByUserId,
+        descendantCountMemo,
       );
-      const referredUsers = users.filter((entry) => entry.referredByUserId === user.id);
+      const usedReferralSupply = referralsCreated.filter((entry) => Boolean(entry.usedByUserId)).length;
+      const unusedReferralSupply = referralsCreated.filter(
+        (entry) => entry.isActive && !entry.usedByUserId,
+      ).length;
+      const referralPointsAwarded = referralPointsByUserId.get(user.id) ?? 0;
+      const recentReferralCodes = referralsCreated.slice(0, 5).map((code) => ({
+        id: code.id,
+        code: code.code,
+        createdAt: code.createdAt,
+        usedAt: code.usedAt,
+        isActive: code.isActive,
+        status: code.usedByUserId ? "used" : code.isActive ? "unused" : "inactive",
+        usedByUsername: code.usedByUserId ? userById.get(code.usedByUserId)?.username ?? null : null,
+      }));
+      const recentReferralActivations = (referralActivationsByReferrerId.get(user.id) ?? [])
+        .slice()
+        .sort((left, right) => +new Date(right.createdAt) - +new Date(left.createdAt))
+        .slice(0, 5)
+        .map((activation) => {
+          const referredUser = userById.get(activation.referredUserId) ?? null;
+          const code = codeById.get(activation.referralCodeId) ?? null;
+
+          return {
+            id: activation.id,
+            createdAt: activation.createdAt,
+            pointsAwarded: activation.pointsAwarded,
+            referredUserId: activation.referredUserId,
+            referredUsername: referredUser?.username ?? "unknown",
+            referredState: referredUser?.homeState ?? "Unknown",
+            referralCode: code?.code ?? "Unknown",
+          };
+        });
+      let treeDepth = 0;
+      let parentId = user.referredByUserId;
+      const visitedParentIds = new Set<string>();
+
+      while (parentId && !visitedParentIds.has(parentId)) {
+        visitedParentIds.add(parentId);
+        treeDepth += 1;
+        parentId = userById.get(parentId)?.referredByUserId ?? null;
+      }
       const topTags = buildTopCounts(authoredGists.map((gist) => gist.tag), 3);
 
       return {
@@ -455,9 +535,17 @@ export async function getOgaV2DashboardSnapshot() {
         fakeLocationStrikes: trust?.fakeLocationStrikes ?? 0,
         comotTagged: user.comotTagged,
         referralCodeUsed: user.referralCodeUsed,
-        referralChildrenCount: referredUsers.length,
-        activeReferralSupply: referralsCreated.filter((entry) => entry.isActive).length,
-        usedReferralSupply: referralsCreated.filter((entry) => Boolean(entry.usedByUserId)).length,
+        referralChildrenCount: directReferralCount,
+        totalReferralDescendants,
+        referralParentUserId: referrer?.id ?? null,
+        referralParentUsername: referrer?.username ?? null,
+        activeReferralSupply: unusedReferralSupply,
+        usedReferralSupply,
+        unusedReferralSupply,
+        referralPointsAwarded,
+        treeDepth,
+        recentReferralCodes,
+        recentReferralActivations,
         lastActiveAt: user.lastActiveAt,
         joinedAt: user.createdAt,
         gistCount: authoredParentGists.length,
@@ -494,39 +582,6 @@ export async function getOgaV2DashboardSnapshot() {
       };
     });
 
-  const surveyEntries = store.surveys
-    .slice()
-    .sort((left, right) => +new Date(right.createdAt) - +new Date(left.createdAt))
-    .map((survey) => {
-      const runtimeStatus = getSurveyRuntimeStatus(survey, now);
-      const options = (surveyOptionsBySurveyId.get(survey.id) ?? []).map((option) => ({
-        id: option.id,
-        label: option.label,
-        votesCount: option.votesCount,
-      }));
-      const totalVotes = surveyVotesBySurveyId.get(survey.id)?.length ?? 0;
-      const createdBy = userById.get(survey.createdByUserId) ?? null;
-
-      return {
-        id: survey.id,
-        question: survey.question,
-        scopeType: survey.scopeType,
-        scopeValue: survey.scopeValue,
-        runtimeStatus,
-        persistedStatus: survey.status,
-        pinned: survey.pinned,
-        startsAt: survey.startsAt,
-        endsAt: survey.endsAt,
-        createdAt: survey.createdAt,
-        totalVotes,
-        pointsReward: survey.pointsReward,
-        createdByUsername: createdBy?.username ?? "oga",
-        options,
-      };
-    });
-
-  const liveSurveys = surveyEntries.filter((survey) => survey.runtimeStatus === "live");
-  const liveSurveyIds = new Set(liveSurveys.map((survey) => survey.id));
   const pinnedMatterSlots = matterChains
     .filter((matter) => matter.pinnedPriority !== null)
     .sort((left, right) => (left.pinnedPriority ?? 99) - (right.pinnedPriority ?? 99));
@@ -552,40 +607,177 @@ export async function getOgaV2DashboardSnapshot() {
       .filter((area) => !store.gists.some((gist) => gist.areaDisplay === area)),
     8,
   );
+  const recentReferralActivations = store.referralActivations
+    .slice()
+    .sort((left, right) => +new Date(right.createdAt) - +new Date(left.createdAt))
+    .map((activation) => {
+      const referrer = userById.get(activation.referrerUserId) ?? null;
+      const referred = userById.get(activation.referredUserId) ?? null;
+      const code = codeById.get(activation.referralCodeId) ?? null;
 
-  const growthByState = buildTopCounts(users.map((user) => user.homeState), 10);
-  const growthByArea = buildTopCounts(users.map((user) => user.homeAreaDisplay), 10);
+      return {
+        id: activation.id,
+        createdAt: activation.createdAt,
+        pointsAwarded: activation.pointsAwarded,
+        referralCodeId: activation.referralCodeId,
+        referralCode: code?.code ?? "Unknown",
+        referrerUserId: activation.referrerUserId,
+        referrerUsername: referrer?.username ?? "oga",
+        referredUserId: activation.referredUserId,
+        referredUsername: referred?.username ?? "unknown",
+        referredState: referred?.homeState ?? "Unknown",
+        referredArea: referred?.homeAreaDisplay ?? null,
+      };
+    });
+
+  const growthSubjects = recentReferralActivations
+    .map((activation) => userById.get(activation.referredUserId) ?? null)
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+  const growthByState = buildTopCounts(
+    (growthSubjects.length ? growthSubjects : users).map((user) => user.homeState),
+    10,
+  );
+  const growthByArea = buildTopCounts(
+    (growthSubjects.length ? growthSubjects : users).map((user) => user.homeAreaDisplay),
+    10,
+  );
+
   const recentReferralUses = store.referralCodes
     .filter((code) => code.usedAt)
     .slice()
-    .sort(
-      (left, right) =>
-        +new Date(right.usedAt ?? 0) - +new Date(left.usedAt ?? 0),
-    )
-    .map((code) => ({
-      id: code.id,
-      code: code.code,
-      usedAt: code.usedAt,
-      expiresAt: code.expiresAt,
-      state:
-        code.usedByUserId && userById.get(code.usedByUserId)
-          ? userById.get(code.usedByUserId)?.homeState ?? "Unknown"
-          : "Unused",
-      area:
-        code.usedByUserId && userById.get(code.usedByUserId)
-          ? userById.get(code.usedByUserId)?.homeAreaDisplay ?? null
-          : null,
-      active: code.isActive,
-    }));
+    .sort((left, right) => +new Date(right.usedAt ?? 0) - +new Date(left.usedAt ?? 0))
+    .map((code) => {
+      const createdBy = userById.get(code.createdByUserId) ?? null;
+      const usedBy = code.usedByUserId ? userById.get(code.usedByUserId) ?? null : null;
 
-  const activeReferralChains = users.reduce<Record<string, number>>((accumulator, user) => {
-    if (!user.referredByUserId) {
-      return accumulator;
+      return {
+        id: code.id,
+        code: code.code,
+        createdAt: code.createdAt,
+        usedAt: code.usedAt,
+        expiresAt: code.expiresAt,
+        createdByUsername: createdBy?.username ?? "oga",
+        usedByUsername: usedBy?.username ?? null,
+        state: usedBy?.homeState ?? "Unused",
+        area: usedBy?.homeAreaDisplay ?? null,
+        active: code.isActive,
+      };
+    });
+
+  const referralInventory = store.referralCodes
+    .slice()
+    .sort((left, right) => +new Date(right.createdAt) - +new Date(left.createdAt))
+    .map((code) => {
+      const createdBy = userById.get(code.createdByUserId) ?? null;
+      const usedBy = code.usedByUserId ? userById.get(code.usedByUserId) ?? null : null;
+      const activation = referralActivationByCodeId.get(code.id) ?? null;
+
+      return {
+        id: code.id,
+        code: code.code,
+        createdAt: code.createdAt,
+        usedAt: code.usedAt,
+        expiresAt: code.expiresAt,
+        isActive: code.isActive,
+        status: code.usedByUserId ? "used" : code.isActive ? "unused" : "inactive",
+        createdByUserId: code.createdByUserId,
+        createdByUsername: createdBy?.username ?? "oga",
+        createdByState: createdBy?.homeState ?? "Unknown",
+        usedByUserId: code.usedByUserId,
+        usedByUsername: usedBy?.username ?? null,
+        usedByState: usedBy?.homeState ?? null,
+        usedByArea: usedBy?.homeAreaDisplay ?? null,
+        pointsAwarded: activation?.pointsAwarded ?? 0,
+        activationCreatedAt: activation?.createdAt ?? null,
+      };
+    });
+
+  const referralTree = [] as Array<{
+    id: string;
+    username: string;
+    state: string;
+    tier: AppStore["users"][number]["tier"];
+    isOga: boolean;
+    parentUserId: string | null;
+    parentUsername: string | null;
+    depth: number;
+    directChildren: number;
+    totalDescendants: number;
+    referralPointsAwarded: number;
+    unusedReferralSupply: number;
+    joinedAt: string;
+  }>;
+
+  const pushReferralTree = (userId: string, depth: number) => {
+    const user = userById.get(userId);
+
+    if (!user) {
+      return;
     }
 
-    accumulator[user.referredByUserId] = (accumulator[user.referredByUserId] ?? 0) + 1;
-    return accumulator;
-  }, {});
+    const children = (referralChildrenByUserId.get(userId) ?? [])
+      .slice()
+      .sort(
+        (left, right) =>
+          +new Date(userById.get(left)?.createdAt ?? 0) - +new Date(userById.get(right)?.createdAt ?? 0),
+      );
+
+    referralTree.push({
+      id: user.id,
+      username: user.username,
+      state: user.homeState,
+      tier: user.tier,
+      isOga: user.isOga,
+      parentUserId: user.referredByUserId,
+      parentUsername: user.referredByUserId ? userById.get(user.referredByUserId)?.username ?? null : null,
+      depth,
+      directChildren: children.length,
+      totalDescendants: getDescendantCount(user.id, referralChildrenByUserId, descendantCountMemo),
+      referralPointsAwarded: referralPointsByUserId.get(user.id) ?? 0,
+      unusedReferralSupply: (referralCodesByCreatorId.get(user.id) ?? []).filter(
+        (code) => code.isActive && !code.usedByUserId,
+      ).length,
+      joinedAt: user.createdAt,
+    });
+
+    for (const childId of children) {
+      pushReferralTree(childId, depth + 1);
+    }
+  };
+
+  const referralRoots = store.users
+    .filter((user) => !user.referredByUserId || !userById.has(user.referredByUserId))
+    .slice()
+    .sort((left, right) => +new Date(left.createdAt) - +new Date(right.createdAt));
+
+  for (const root of referralRoots) {
+    pushReferralTree(root.id, 0);
+  }
+
+  const referralChainPressure = userOversight
+    .filter((user) => user.referralChildrenCount > 0 || user.totalReferralDescendants > 0)
+    .slice()
+    .sort((left, right) => {
+      if (right.totalReferralDescendants !== left.totalReferralDescendants) {
+        return right.totalReferralDescendants - left.totalReferralDescendants;
+      }
+
+      if (right.referralChildrenCount !== left.referralChildrenCount) {
+        return right.referralChildrenCount - left.referralChildrenCount;
+      }
+
+      return right.referralPointsAwarded - left.referralPointsAwarded;
+    })
+    .map((user) => ({
+      userId: user.id,
+      username: user.username,
+      state: user.state,
+      count: user.totalReferralDescendants,
+      directChildren: user.referralChildrenCount,
+      referralPointsAwarded: user.referralPointsAwarded,
+      unusedReferralSupply: user.unusedReferralSupply,
+    }))
+    .slice(0, 8);
 
   const areaHeatMap = buildTopCounts(
     store.gists
@@ -807,18 +999,6 @@ export async function getOgaV2DashboardSnapshot() {
         store.gists.length + store.gistComments.length + store.gistReports.length + store.savedGists.length,
     },
     {
-      id: "survey",
-      label: "Judgement Day Signals",
-      status: "live" as const,
-      source: "Survey scope, votes, participation spread",
-      extracted: [
-        "pulse adoption",
-        "participation concentration",
-        "topic urgency",
-      ],
-      eventsCollected: store.surveys.length + store.surveyVotes.length,
-    },
-    {
       id: "safety-exclusions",
       label: "Excluded by design",
       status: "blocked" as const,
@@ -833,7 +1013,7 @@ export async function getOgaV2DashboardSnapshot() {
   const chrome = {
     inboxUnread: inboxMessages.filter((message) => message.status === "unread").length,
     trustQueue: queueItems.length,
-    liveSurveys: liveSurveys.length,
+    referralAlerts: recentReferralActivations.filter((entry) => isSince(entry.createdAt, weekAgo)).length,
     pinnedMatters: pinnedMatterSlots.length,
     preIntelAlerts: trendAlerts.length,
     collectionAlerts: users.filter((user) => !user.homeAreaDisplay).length,
@@ -861,7 +1041,12 @@ export async function getOgaV2DashboardSnapshot() {
         ).length,
         savesToday: store.savedGists.filter((entry) => isSince(entry.createdAt, dayStart)).length,
         reportsToday: store.gistReports.filter((entry) => isSince(entry.createdAt, dayStart)).length,
-        liveSurveyParticipation: sum(liveSurveys.map((survey) => survey.totalVotes)),
+        referralActivations7d: recentReferralActivations.filter((entry) =>
+          isSince(entry.createdAt, weekAgo),
+        ).length,
+        referralPoints7d: recentReferralActivations
+          .filter((entry) => isSince(entry.createdAt, weekAgo))
+          .reduce((accumulator, entry) => accumulator + entry.pointsAwarded, 0),
       },
       topTags: buildTopCounts(store.gists.map((gist) => gist.tag), 8),
       topAreas: buildTopCounts(store.gists.map((gist) => gist.areaDisplay), 8),
@@ -872,6 +1057,7 @@ export async function getOgaV2DashboardSnapshot() {
         totalCodes: store.referralCodes.length,
         usedCodes: store.referralCodes.filter((code) => Boolean(code.usedByUserId)).length,
         activeCodes: store.referralCodes.filter((code) => code.isActive).length,
+        totalActivations: recentReferralActivations.length,
       },
       reportBacklog: {
         total: queueItems.length,
@@ -888,7 +1074,8 @@ export async function getOgaV2DashboardSnapshot() {
           (entry) => entry.type === "fake-location" && isSince(entry.createdAt, dayStart),
         ).length,
       },
-      liveSurveys: liveSurveys.slice(0, 3),
+      recentActivations: recentReferralActivations.slice(0, 4),
+      growthLeaders: referralChainPressure.slice(0, 4),
       pinnedMatters: pinnedMatterSlots.slice(0, 3),
       inboxUnread: chrome.inboxUnread,
       locationHealth: {
@@ -997,63 +1184,32 @@ export async function getOgaV2DashboardSnapshot() {
       ),
       tierMix: buildTopCounts(userOversight.map((user) => user.tier), 8),
     },
-    judgementDay: {
-      summary: {
-        total: surveyEntries.length,
-        live: liveSurveys.length,
-        pinned: surveyEntries.filter((survey) => survey.pinned).length,
-        closed: surveyEntries.filter((survey) => survey.runtimeStatus === "closed").length,
-        totalVotes: sum(surveyEntries.map((survey) => survey.totalVotes)),
-      },
-      supportMatrix: [
-        {
-          type: "single-choice",
-          readiness: "Live runtime",
-          note: "Publishes to the public Judgement Day flow right now.",
-        },
-        {
-          type: "multi-choice",
-          readiness: "Staged",
-          note: "Operator surface prepared here, public runtime still pending.",
-        },
-        {
-          type: "multi-question",
-          readiness: "Staged",
-          note: "Need public response storage before publication is safe.",
-        },
-        {
-          type: "anonymous-feedback",
-          readiness: "Staged",
-          note: "Need public text-feedback intake and moderation review wiring.",
-        },
-      ],
-      surveys: surveyEntries,
-      liveSurveys,
-    },
     growth: {
       summary: {
         totalCodes: store.referralCodes.length,
         activeCodes: store.referralCodes.filter((code) => code.isActive).length,
         usedCodes: store.referralCodes.filter((code) => Boolean(code.usedByUserId)).length,
-        activatedUsers: users.length,
-        inviteVelocity7d: store.referralCodes.filter(
-          (code) => code.usedAt && isSince(code.usedAt, weekAgo),
+        unusedCodes: store.referralCodes.filter((code) => code.isActive && !code.usedByUserId).length,
+        activatedUsers: recentReferralActivations.length,
+        totalPointsAwarded: recentReferralActivations.reduce(
+          (accumulator, entry) => accumulator + entry.pointsAwarded,
+          0,
+        ),
+        inviteVelocity7d: recentReferralActivations.filter((entry) =>
+          isSince(entry.createdAt, weekAgo),
         ).length,
-        inviteVelocity30d: store.referralCodes.filter(
-          (code) => code.usedAt && isSince(code.usedAt, monthAgo),
+        inviteVelocity30d: recentReferralActivations.filter((entry) =>
+          isSince(entry.createdAt, monthAgo),
         ).length,
+        rootAccounts: referralRoots.length,
       },
       byState: growthByState,
       byArea: growthByArea,
       recentUses: recentReferralUses.slice(0, 12),
-      chainPressure: Object.entries(activeReferralChains)
-        .map(([userId, count]) => ({
-          userId,
-          username: userById.get(userId)?.username ?? "seed",
-          count,
-        }))
-        .sort((left, right) => right.count - left.count)
-        .slice(0, 8),
+      recentActivations: recentReferralActivations.slice(0, 12),
+      chainPressure: referralChainPressure,
+      referralTree,
+      codeInventory: referralInventory,
       supplyPatterns: {
         exhausted: store.referralCodes.filter(
           (code) => !code.isActive && Boolean(code.usedByUserId),
@@ -1079,7 +1235,7 @@ export async function getOgaV2DashboardSnapshot() {
           store.gistComments.length +
           store.gistReactions.length +
           store.gistRelations.length +
-          store.surveyVotes.length +
+          store.referralActivations.length +
           store.referralCodes.length +
           store.contactOgaMessages.length +
           store.intelSubmissions.length,
@@ -1165,7 +1321,7 @@ export async function getOgaV2DashboardSnapshot() {
         inactive: users.filter((user) => parseISO(user.lastActiveAt) < weekAgo).length,
         stateLeaders: growthByState.slice(0, 5),
       },
-      liveSurveys: liveSurveys.slice(0, 3),
+      referralHighlights: recentReferralActivations.slice(0, 6),
       recentAlerts: store.alerts
         .slice()
         .sort((left, right) => +new Date(right.createdAt) - +new Date(left.createdAt))
@@ -1215,9 +1371,9 @@ export async function getOgaV2DashboardSnapshot() {
         .sort((left, right) => +new Date(right.createdAt) - +new Date(left.createdAt))
         .slice(0, 20),
       operatorNotes: [
-        "Old /oga stays preserved while /oga-v2 is inspected.",
+        "Operator control stays centered on matas, trust, referrals, and inbox work only.",
         "Local/dev access to /oga-v2 is intentionally open by default.",
-        "Public Judgement Day publishing is currently safe for single-choice polls only.",
+        "Normal users get five single-use referral codes. Oga can mint more supply at any time.",
       ],
       environmentNotes: [
         {
@@ -1233,11 +1389,14 @@ export async function getOgaV2DashboardSnapshot() {
         },
         {
           label: "Legacy oga demo open",
-          value: process.env.ALLOW_OGA_DEMO_ACCESS === "true" ? "enabled" : "disabled",
+          value:
+            process.env.NODE_ENV !== "production" && process.env.ALLOW_OGA_DEMO_ACCESS === "true"
+              ? "enabled"
+              : "disabled",
         },
         {
-          label: "Live survey runtime",
-          value: `${liveSurveyIds.size} active`,
+          label: "Referral activations",
+          value: `${recentReferralActivations.length} logged`,
         },
       ],
     },

@@ -9,8 +9,6 @@ import { PageHeader } from "@/components/blocks/page-header";
 import { FeedTabs } from "@/components/gist/feed-tabs";
 import { FeedSortToggle } from "@/components/gist/feed-sort-toggle";
 import { GistCard } from "@/components/gist/gist-card";
-import { PredictionSlotCard } from "@/components/gist/prediction-slot-card";
-import { SurveyCard } from "@/components/gist/survey-card";
 import { TopicFilters } from "@/components/gist/topic-filters";
 import { LeaderboardList } from "@/components/blocks/leaderboard-list";
 import { requireUser } from "@/lib/server/services/auth";
@@ -130,10 +128,6 @@ export default async function MataLevelPage({
             tag={activeTag}
           />
           <div className="space-y-4">
-            {data.predictionSlot ? (
-              <PredictionSlotCard prediction={data.predictionSlot} />
-            ) : null}
-            {data.activeSurvey ? <SurveyCard survey={data.activeSurvey} interactive /> : null}
             {data.pinnedGists.map((gist) => (
               <GistCard key={gist.id} gist={gist} />
             ))}

@@ -4,16 +4,25 @@ import { redirect } from "next/navigation";
 import { LogoLockup } from "@/components/blocks/logo-lockup";
 import { LoginForm } from "@/components/forms/login-form";
 import { Card } from "@/components/ui/card";
-import { getCurrentUser, getOgaRecoveryHint } from "@/lib/server/services/auth";
+import {
+  getOperatorDashboardDestination,
+  getOperatorLoginDestination,
+  getOperatorRecoveryDestination,
+  hasStandaloneOperatorApp,
+} from "@/lib/server/operator-app";
+import { getCurrentUser } from "@/lib/server/services/auth";
 
 export const metadata = { title: "Oga Login — GistMata" };
 
 export default async function OgaLoginPage() {
+  if (hasStandaloneOperatorApp()) {
+    redirect(getOperatorLoginDestination());
+  }
+
   const viewer = await getCurrentUser();
-  const hint = await getOgaRecoveryHint();
 
   if (viewer) {
-    redirect(viewer.isOga ? "/oga" : "/mata");
+    redirect(viewer.isOga ? getOperatorDashboardDestination() : "/mata");
   }
 
   return (
@@ -37,12 +46,6 @@ export default async function OgaLoginPage() {
           <p className="text-sm leading-6 text-[var(--gm-ink-soft)]">
             Use the reserved oga username and PIN to enter the operator shell.
           </p>
-          {hint ? (
-            <p className="text-sm leading-6 text-[var(--gm-ink-soft)]">
-              Local oga recovery:{" "}
-              <span className="font-semibold">{`${hint.accountCode} / ${hint.pin}`}</span>
-            </p>
-          ) : null}
         </div>
 
         <LoginForm />
@@ -50,7 +53,7 @@ export default async function OgaLoginPage() {
         <p className="text-sm leading-6 text-[var(--gm-ink-soft)]">
           If the session dropped fully, use{" "}
           <Link
-            href="/locker/recovery"
+            href={getOperatorRecoveryDestination()}
             className="font-semibold text-[var(--gm-green-deep)] underline underline-offset-2"
           >
             Account Code recovery

@@ -9,7 +9,6 @@ import { Card } from "@/components/ui/card";
 import { CommentComposer } from "@/components/gist/comment-composer";
 import { CommentItem } from "@/components/gist/comment-item";
 import { GistCard } from "@/components/gist/gist-card";
-import { SurveyCard } from "@/components/gist/survey-card";
 import { getFeedLevelLabel, RELATION_TYPE_LABELS } from "@/lib/domain/constants";
 import { requireUser } from "@/lib/server/services/auth";
 import { getMatterBundleByGist } from "@/lib/server/services/matter";
@@ -77,16 +76,6 @@ export default async function GistDetailPage({
         </div>
       ),
     },
-    ...(data.activeSurvey
-      ? [
-          {
-            id: "survey",
-            title: "Live Judgement Day",
-            surface: "raw" as const,
-            content: <SurveyCard survey={data.activeSurvey} />,
-          },
-        ]
-      : []),
   ];
 
   return (

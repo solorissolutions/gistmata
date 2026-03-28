@@ -1,102 +1,40 @@
-import { afterEach, describe, it, expect } from "vitest";
-import { JSDOM } from "jsdom";
-import { act } from "react";
-import { createRoot, type Root } from "react-dom/client";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { AccountCodeCard } from "@/components/join/account-code-card";
 
-let dom: JSDOM | null = null;
-let root: Root | null = null;
-let container: HTMLElement | null = null;
-const writeText = async () => undefined;
-
-function installDom() {
-  dom = new JSDOM("<!doctype html><html><body><div id='root'></div></body></html>", {
-    url: "http://127.0.0.1:3000",
-  });
-  container = dom.window.document.getElementById("root");
-
-  if (!container) {
-    throw new Error("Root container missing.");
-  }
-
-  root = createRoot(container);
-  Object.assign(globalThis, {
-    window: dom.window,
-    document: dom.window.document,
-    HTMLElement: dom.window.HTMLElement,
-    Node: dom.window.Node,
-    IS_REACT_ACT_ENVIRONMENT: true,
-  });
-  Object.defineProperty(globalThis, "navigator", {
-    configurable: true,
-    value: dom.window.navigator,
-  });
-}
-
-async function renderCard(code?: string | null) {
-  installDom();
-  Object.defineProperty(globalThis.navigator, "clipboard", {
-    configurable: true,
-    value: {
-      writeText,
-    },
-  });
-
-  await act(async () => {
-    root!.render(<AccountCodeCard code={code} />);
-  });
-}
-
 afterEach(async () => {
-  await act(async () => {
-    root?.unmount();
-  });
-
-  dom?.window.close();
-  dom = null;
-  root = null;
-  container = null;
+  cleanup();
+  vi.restoreAllMocks();
 });
 
 describe("AccountCodeCard", () => {
-  it("renders the account code in the UI", async () => {
-    await renderCard("MATA-LGK9-LAGH");
+  it("renders the account code in the UI", () => {
+    render(<AccountCodeCard code="MATA-LGK9-LAGH" />);
 
-    expect(container?.textContent?.includes("MATA-LGK9-LAGH")).toBe(true);
-    expect(container?.textContent?.includes("Screenshot this now.")).toBe(true);
+    expect(screen.getByText("MATA-LGK9-LAGH")).toBeTruthy();
+    expect(screen.getByText("Screenshot this now.")).toBeTruthy();
   });
 
   it("copies the account code when the button is clicked", async () => {
-    let copiedValue = "";
-    await renderCard("MATA-LGK9-LAGH");
-    Object.defineProperty(globalThis.navigator, "clipboard", {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, "clipboard", {
       configurable: true,
       value: {
-        writeText: async (value: string) => {
-          copiedValue = value;
-        },
+        writeText,
       },
     });
+    render(<AccountCodeCard code="MATA-LGK9-LAGH" />);
 
-    const button = container?.querySelector("button");
-    expect(button).toBeTruthy();
-    if (!button) return;
+    fireEvent.click(screen.getByRole("button", { name: "Copy code" }));
 
-    await act(async () => {
-      button.dispatchEvent(new dom!.window.MouseEvent("click", { bubbles: true }));
-      await Promise.resolve();
-    });
-
-    expect(copiedValue).toBe("MATA-LGK9-LAGH");
-    expect(container?.textContent?.includes("Code copied")).toBe(true);
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("MATA-LGK9-LAGH"));
+    expect(screen.getByRole("button", { name: "Code copied" })).toBeTruthy();
   });
 
-  it("shows fallback guidance when no code is available", async () => {
-    await renderCard("");
+  it("shows fallback guidance when no code is available", () => {
+    render(<AccountCodeCard code="" />);
 
-    expect(container?.textContent?.includes("Account Code no show yet.")).toBe(true);
-    const button = container?.querySelector("button");
-    expect(button?.hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText("Account Code no show yet.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Copy code" }).hasAttribute("disabled")).toBe(true);
   });
 });

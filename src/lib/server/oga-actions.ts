@@ -6,18 +6,12 @@ import {
   broadcastSchema,
   INITIAL_ACTION_STATE,
   referralGenerateSchema,
-  surveySchema,
   type ActionState,
 } from "@/lib/domain/validation";
 import { actionError, actionSuccess, fromZodError } from "@/lib/server/action-state";
 import { requireOga } from "@/lib/server/services/auth";
 import { createBroadcast } from "@/lib/server/services/alerts";
 import { generateReferralBatch } from "@/lib/server/services/referral";
-import {
-  createSurvey,
-  setSurveyPinned,
-  setSurveyStatus,
-} from "@/lib/server/services/oga/survey-ops-service";
 import {
   archiveMessage,
   markMessageRead,
@@ -69,66 +63,6 @@ export async function unpinGistAction(formData: FormData) {
 
   await unpinGist(gistId, oga);
   revalidatePath("/oga/gists");
-  revalidatePath("/mata");
-}
-
-export async function createSurveyAction(
-  _state: ActionState = INITIAL_ACTION_STATE,
-  formData: FormData,
-): Promise<ActionState> {
-  void _state;
-  const oga = await requireOga();
-  const validated = surveySchema.safeParse({
-    question: formData.get("question"),
-    scopeType: formData.get("scopeType"),
-    scopeValue: formData.get("scopeValue"),
-    endsAt: formData.get("endsAt"),
-    optionOne: formData.get("optionOne"),
-    optionTwo: formData.get("optionTwo"),
-    optionThree: formData.get("optionThree"),
-  });
-
-  if (!validated.success) {
-    return fromZodError(validated.error);
-  }
-
-  try {
-    await createSurvey({
-      question: validated.data.question,
-      scopeType: validated.data.scopeType,
-      scopeValue: validated.data.scopeValue,
-      endsAt: validated.data.endsAt,
-      options: [
-        validated.data.optionOne,
-        validated.data.optionTwo,
-        validated.data.optionThree,
-      ],
-    }, oga);
-    revalidatePath("/oga/judgement-day");
-    revalidatePath("/mata");
-    return actionSuccess("New Judgement Day don publish.");
-  } catch (error) {
-    return actionError(error instanceof Error ? error.message : "Survey no publish.");
-  }
-}
-
-export async function toggleSurveyPinAction(formData: FormData) {
-  const oga = await requireOga();
-  const surveyId = String(formData.get("surveyId") ?? "");
-  const pinned = String(formData.get("pinned") ?? "") === "true";
-
-  await setSurveyPinned(surveyId, pinned, oga);
-  revalidatePath("/oga/judgement-day");
-  revalidatePath("/mata");
-}
-
-export async function setSurveyStatusAction(formData: FormData) {
-  const oga = await requireOga();
-  const surveyId = String(formData.get("surveyId") ?? "");
-  const status = String(formData.get("status") ?? "") as "draft" | "live" | "closed";
-
-  await setSurveyStatus(surveyId, status, oga);
-  revalidatePath("/oga/judgement-day");
   revalidatePath("/mata");
 }
 

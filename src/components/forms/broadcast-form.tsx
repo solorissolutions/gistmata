@@ -21,7 +21,7 @@ export function BroadcastForm() {
       </div>
       <input name="title" placeholder="Alert title" className="h-11 w-full rounded-2xl border border-[var(--border)] bg-[var(--input)] px-4 text-sm text-[var(--input-foreground)] placeholder:text-[var(--input-placeholder)]" />
       <textarea name="body" placeholder="Alert body" className="min-h-24 w-full rounded-[22px] border border-[var(--border)] bg-[var(--input)] px-4 py-3 text-sm text-[var(--input-foreground)] placeholder:text-[var(--input-placeholder)]" />
-      <input name="link" placeholder="/alerts or /judgement-day/..." className="h-11 w-full rounded-2xl border border-[var(--border)] bg-[var(--input)] px-4 text-sm text-[var(--input-foreground)] placeholder:text-[var(--input-placeholder)]" />
+      <input name="link" placeholder="/alerts or /mata/..." className="h-11 w-full rounded-2xl border border-[var(--border)] bg-[var(--input)] px-4 text-sm text-[var(--input-foreground)] placeholder:text-[var(--input-placeholder)]" />
       {state.message ? <p className={state.status === "error" ? "text-sm text-[var(--destructive)]" : "text-sm text-[var(--accent)]"}>{state.message}</p> : null}
       <SubmitButton idleLabel="Send broadcast" pendingLabel="Sending..." />
     </form>

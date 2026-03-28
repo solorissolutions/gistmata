@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+const operatorOrigin = process.env.OGA_APP_ORIGIN?.trim().replace(/\/$/, "") || null;
 type IgnoredPattern = RegExp | string;
 type WatchOptionsLike = {
   ignored?: IgnoredPattern | IgnoredPattern[];
@@ -33,28 +34,70 @@ function mergeIgnoredPatterns(
   return typeof base === "string" ? [base, ...patterns] : base;
 }
 
+function ogaDestination(path: string) {
+  return operatorOrigin ? `${operatorOrigin}${path}` : path;
+}
+
 const nextConfig: NextConfig = {
-  async redirects() {
+  async headers() {
     return [
       {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+    ];
+  },
+  async redirects() {
+    return [
+      ...(operatorOrigin
+        ? [
+            {
+              source: "/oga-login",
+              destination: `${operatorOrigin}/login`,
+              permanent: true,
+              basePath: false as const,
+            },
+          ]
+        : []),
+      {
         source: "/oga/gists",
-        destination: "/oga-v2/matters",
+        destination: ogaDestination("/oga-v2/matters"),
         permanent: true,
       },
       {
         source: "/oga/gists/:path*",
-        destination: "/oga-v2/matters/:path*",
+        destination: ogaDestination("/oga-v2/matters/:path*"),
         permanent: true,
+        basePath: operatorOrigin ? false : undefined,
+      },
+      {
+        source: "/oga-v2",
+        destination: ogaDestination("/oga-v2"),
+        permanent: true,
+        basePath: operatorOrigin ? false : undefined,
+      },
+      {
+        source: "/oga-v2/:path*",
+        destination: ogaDestination("/oga-v2/:path*"),
+        permanent: true,
+        basePath: operatorOrigin ? false : undefined,
       },
       {
         source: "/oga",
-        destination: "/oga-v2",
+        destination: ogaDestination("/oga-v2"),
         permanent: true,
+        basePath: operatorOrigin ? false : undefined,
       },
       {
         source: "/oga/:path*",
-        destination: "/oga-v2/:path*",
+        destination: ogaDestination("/oga-v2/:path*"),
         permanent: true,
+        basePath: operatorOrigin ? false : undefined,
       },
     ];
   },

@@ -8,7 +8,7 @@ export default async function OgaBroadcastPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader eyebrow="Oga" title="Broadcast" description="In-app alert records, survey alerts, and inactivity warning foundation." />
+      <PageHeader eyebrow="Oga" title="Broadcast" description="In-app alert records, growth nudges, and inactivity warning foundation." />
       <Card>
         <BroadcastForm />
       </Card>

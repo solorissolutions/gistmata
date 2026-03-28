@@ -142,9 +142,7 @@ export function groupAlerts(alerts: AlertRecord[]): AlertGroupView[] {
         ? "Comments"
         : alert.type === "activity"
           ? "Mata activity"
-          : alert.type === "survey"
-            ? "Judgement Day"
-            : alert.type === "points"
+          : alert.type === "points"
               ? "Points"
               : "Account / inactivity";
 

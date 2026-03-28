@@ -1,5 +1,4 @@
 import { PageHeader } from "@/components/blocks/page-header";
-import { SurveyCard } from "@/components/gist/survey-card";
 import { AnalyticsCard } from "@/components/oga/analytics-card";
 import { Card } from "@/components/ui/card";
 import { getOgaOverviewBundle } from "@/lib/server/store";
@@ -55,7 +54,6 @@ export default async function OgaOverviewPage() {
             </div>
           </div>
         </Card>
-        {data.liveSurvey ? <SurveyCard survey={data.liveSurvey} /> : null}
       </div>
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="space-y-3">

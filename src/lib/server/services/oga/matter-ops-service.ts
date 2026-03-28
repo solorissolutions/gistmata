@@ -121,16 +121,3 @@ export async function restoreGist(id: string, oga: Viewer) {
     status: "active",
   });
 }
-
-export async function getCreateSurveyFromMatterHelper(id: string) {
-  const matter = await getMatterDetailBundle(id);
-
-  if (!matter) {
-    return null;
-  }
-
-  return {
-    sourceMatter: matter,
-    prefilledQuestion: `Judgement Day: ${matter.body}`.slice(0, 140),
-  };
-}

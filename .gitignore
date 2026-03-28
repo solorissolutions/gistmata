@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/apps/*/.next/
 /out/
 /.data/gistmata-demo-store.json
 /.tmp_docx_extract/

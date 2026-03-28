@@ -33,9 +33,9 @@ export default async function OgaV2BroadcastPage() {
             hint: "Latest alert records in store.",
           },
           {
-            label: "Live surveys",
-            value: broadcast.liveSurveys.length,
-            hint: "Can be amplified with alert links.",
+            label: "Growth leaders",
+            value: broadcast.audienceEstimates.stateLeaders.length,
+            hint: "Highest-volume state audiences right now.",
           },
         ]}
       />
@@ -81,24 +81,26 @@ export default async function OgaV2BroadcastPage() {
             </div>
           </OgaV2Panel>
 
-          <OgaV2Panel title="Live survey alert hooks" eyebrow="Judgement Day amplification">
+          <OgaV2Panel title="Referral growth watch" eyebrow="Growth amplification">
             <div className="space-y-3">
-              {broadcast.liveSurveys.length === 0 ? (
+              {broadcast.referralHighlights.length === 0 ? (
                 <div className="text-sm leading-6 text-[var(--gm-ink-soft)]">
-                  No live survey to amplify right now.
+                  No standout referral activity right now.
                 </div>
               ) : (
-                broadcast.liveSurveys.map((survey) => (
+                broadcast.referralHighlights.map((entry) => (
                   <div
-                    key={survey.id}
+                    key={entry.id}
                     className="rounded-[20px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <span className="font-semibold">{survey.question}</span>
-                      <OgaV2Pill tone="success">{survey.totalVotes} votes</OgaV2Pill>
+                      <span className="font-semibold">
+                        @{entry.referrerUsername} invited @{entry.referredUsername}
+                      </span>
+                      <OgaV2Pill tone="success">+{entry.pointsAwarded} pts</OgaV2Pill>
                     </div>
                     <div className="mt-2 text-xs text-[var(--gm-ink-soft)]">
-                      /judgement-day/{survey.id}
+                      {entry.referralCode}
                     </div>
                   </div>
                 ))

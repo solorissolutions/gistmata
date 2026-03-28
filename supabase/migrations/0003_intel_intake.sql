@@ -22,6 +22,8 @@ create index if not exists idx_intel_submissions_status
 
 alter table intel_submissions enable row level security;
 
+drop policy if exists "service_role_all_intel_submissions" on intel_submissions;
+
 create policy "service_role_all_intel_submissions"
   on intel_submissions
   for all

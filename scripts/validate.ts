@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import { loadEnvConfig } from "@next/env";
 
 import { getLocationProviderInfo, resolveLocation } from "@/lib/server/location";
+import { isPostgresStoreConfigured } from "@/lib/server/store/postgres-store";
 import {
   addCommentToGist,
   beginJoinDraft,
   completeJoinDraft,
   createSession,
   createContactOgaMessage,
-  createSurvey,
   deleteSession,
   dropGist,
   dropFollowUpGist,
@@ -33,12 +33,15 @@ import {
   setPinnedGistPriority,
   toggleSavedGist,
   unpinGist,
-  voteInSurvey,
 } from "@/lib/server/store";
 
 loadEnvConfig(process.cwd());
 
 async function main() {
+  if (!isPostgresStoreConfigured()) {
+    throw new Error("DIRECT_URL or DATABASE_URL must be set before running the validation script.");
+  }
+
   await resetDemoStore();
 
   const draft = await beginJoinDraft("GREEN-MATA");
@@ -84,10 +87,8 @@ async function main() {
 
   const storeAfterDrop = await readStore();
   const targetGist = storeAfterDrop.gists.find((gist) => gist.id !== gistId);
-  const survey = storeAfterDrop.surveys.find((entry) => entry.status === "live");
   const oga = storeAfterDrop.users.find((user) => user.isOga);
   assert.ok(targetGist);
-  assert.ok(survey);
   assert.ok(oga);
 
   const followUpId = await dropFollowUpGist({
@@ -121,11 +122,6 @@ async function main() {
     gistId: targetGist.id,
   });
   assert.equal(unsaved.saved, false);
-  await voteInSurvey({
-    viewerId: viewer.id,
-    surveyId: survey.id,
-    optionId: storeAfterDrop.surveyOptions.find((option) => option.surveyId === survey.id)!.id,
-  });
   await createContactOgaMessage({
     senderUserId: viewer.id,
     category: "Suggestion",
@@ -133,13 +129,6 @@ async function main() {
     accountCodeReference: completed.accountCode.slice(-4),
   });
 
-  await createSurvey({
-    ogaId: oga.id,
-    question: "Validation survey for oga route",
-    scopeType: "nigeria",
-    endsAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
-    options: ["Power", "Fuel", "Road"],
-  });
   const codes = await generateReferralCodes(oga.id, 2);
   assert.equal(codes.length, 2);
   await setPinnedGistPriority({ ogaId: oga.id, gistId: targetGist.id, priority: 3 });
@@ -155,6 +144,7 @@ async function main() {
   assert.ok(trustBundle.summary.total >= 1);
   const growthBundle = await getOgaGrowthBundle();
   assert.ok(growthBundle.activationMetrics.totalCodes >= 1);
+  assert.ok(growthBundle.recentActivations.length >= 1);
   const inboxBundle = await getOgaInboxBundle();
   assert.ok(inboxBundle.messages.length >= 1);
   await setContactOgaMessageStatus({
@@ -174,8 +164,6 @@ async function main() {
   console.log("- save / unsave flow");
   console.log("- contact oga / inbox flow");
   console.log("- trust queue summary");
-  console.log("- survey vote");
-  console.log("- oga survey creation");
   console.log("- oga referral generation");
   console.log("- oga pin / unpin / moderation flow");
   console.log("- oga growth bundle");

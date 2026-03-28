@@ -10,6 +10,7 @@ type DraftSummary = {
   referralCode: string | null;
   username: string | null;
   accountCode: string | null;
+  reservedReferralCodes?: string[] | null;
 };
 
 export function JoinProgress({ draft }: { draft: DraftSummary | null }) {
@@ -75,13 +76,12 @@ export function JoinProgress({ draft }: { draft: DraftSummary | null }) {
         <p className="mt-2">Code: {draft?.referralCode ?? "Waiting for referral"}</p>
         <p>Username: {draft?.username ? `@${draft.username}` : "Not set yet"}</p>
         <p>Account Code: {draft?.accountCode ? "Generated and ready to save" : "Shows after PIN"}</p>
-      </div>
-
-      <div className="rounded-[24px] border border-dashed border-[var(--border)] bg-[var(--surface-soft)] p-4 text-sm leading-6 text-[var(--gm-ink-soft)]">
-        <p className="font-semibold text-[var(--foreground)]">Local demo codes</p>
-        <p className="mt-2">GREEN-MATA</p>
-        <p>NAIJA-YARN</p>
-        <p>TOWN-SQUARE</p>
+        <p>
+          Referral codes:{" "}
+          {draft?.reservedReferralCodes?.length
+            ? `${draft.reservedReferralCodes.length} ready to copy`
+            : "Show after PIN"}
+        </p>
       </div>
 
       <Link

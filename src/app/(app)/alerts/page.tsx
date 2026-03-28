@@ -15,7 +15,7 @@ export default async function AlertsPage() {
       <PageHeader
         eyebrow="Alerts"
         title="Your alerts"
-        description="Comments, Mata activity, Judgement Day, points, and account notices stay here."
+        description="Comments, Mata activity, points, and account notices stay here."
       />
       <div className="space-y-4">
         {data.groupedAlerts.map((group) => (

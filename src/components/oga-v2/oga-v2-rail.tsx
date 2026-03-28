@@ -14,7 +14,6 @@ import {
   PanelLeftOpen,
   Settings,
   ShieldAlert,
-  Sparkles,
   SquareActivity,
   TrendingUp,
   Users,
@@ -36,7 +35,6 @@ const ICONS = {
   "/oga-v2/matters": GitBranch,
   "/oga-v2/trust": ShieldAlert,
   "/oga-v2/users": Users,
-  "/oga-v2/judgement-day": Sparkles,
   "/oga-v2/growth": TrendingUp,
   "/oga-v2/inbox": Inbox,
   "/oga-v2/broadcast": Megaphone,
@@ -60,12 +58,12 @@ function getBadge(
     return chrome.trustQueue;
   }
 
-  if (href === "/oga-v2/judgement-day") {
-    return chrome.liveSurveys;
-  }
-
   if (href === "/oga-v2/matters") {
     return chrome.pinnedMatters;
+  }
+
+  if (href === "/oga-v2/growth") {
+    return chrome.referralAlerts;
   }
 
   return null;
@@ -257,8 +255,8 @@ export function OgaV2Rail({
                     <span className="font-semibold">{chrome.trustQueue}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Live surveys</span>
-                    <span className="font-semibold">{chrome.liveSurveys}</span>
+                    <span>Recent activations</span>
+                    <span className="font-semibold">{chrome.referralAlerts}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Pinned matas</span>

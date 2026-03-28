@@ -1,10 +1,15 @@
 import { loadEnvConfig } from "@next/env";
 
 import { resetDemoStore, readStore } from "@/lib/server/store";
+import { isPostgresStoreConfigured } from "@/lib/server/store/postgres-store";
 
 loadEnvConfig(process.cwd());
 
 async function main() {
+  if (!isPostgresStoreConfigured()) {
+    throw new Error("DIRECT_URL or DATABASE_URL must be set before running the seed script.");
+  }
+
   await resetDemoStore();
   const store = await readStore();
 

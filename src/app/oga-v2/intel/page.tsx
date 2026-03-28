@@ -91,8 +91,8 @@ export default async function OgaV2IntelPage() {
               <div className="rounded-[20px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-4">
                 <div className="font-semibold">Legal-only</div>
                 <div className="mt-2 text-sm leading-6 text-[var(--gm-ink-soft)]">
-                  This tool stays inside public content, operator inboxes, survey responses,
-                  referrals, and consented platform metadata.
+                  This tool stays inside public content, operator inboxes, referrals,
+                  and consented platform metadata.
                 </div>
               </div>
               <div className="rounded-[20px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-4">

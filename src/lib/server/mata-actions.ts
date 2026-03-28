@@ -28,7 +28,6 @@ import {
   toggleViewerSave,
 } from "@/lib/server/services/interaction";
 import { createFollowUpGist } from "@/lib/server/services/matter";
-import { submitSurveyResponse } from "@/lib/server/services/survey";
 import { submitReport as submitReportService } from "@/lib/server/services/trust";
 
 export async function submitGist(
@@ -207,31 +206,6 @@ export async function toggleSaveGistAction(formData: FormData) {
   revalidatePath("/locker");
   revalidatePath("/locker/saved");
   revalidatePath(`/gist/${gistId}`);
-}
-
-export async function voteSurveyAction(
-  _state: ActionState = INITIAL_ACTION_STATE,
-  formData: FormData,
-): Promise<ActionState> {
-  void _state;
-  const viewer = await requireUser();
-  const surveyId = String(formData.get("surveyId") ?? "");
-  const optionId = String(formData.get("optionId") ?? "");
-
-  try {
-    const result = await submitSurveyResponse(surveyId, optionId, viewer);
-
-    revalidatePath(`/judgement-day/${surveyId}`);
-    revalidatePath("/mata");
-    revalidatePath("/alerts");
-    revalidatePath("/score");
-
-    return actionSuccess(`Vote don land. +${result.pointsReward} GistPoints.`);
-  } catch (error) {
-    return actionError(
-      error instanceof Error ? error.message : "Vote no land.",
-    );
-  }
 }
 
 export async function submitContactOga(

@@ -50,12 +50,14 @@ async function assertSchemaReady(client: PoolClient) {
   const result = await client.query<{
     users_table: string | null;
     join_drafts_table: string | null;
+    referral_activations_table: string | null;
     contact_messages_table: string | null;
     intel_submissions_table: string | null;
   }>(
     `select
       to_regclass('public.users') as users_table,
       to_regclass('public.join_drafts') as join_drafts_table,
+      to_regclass('public.referral_activations') as referral_activations_table,
       to_regclass('public.contact_messages') as contact_messages_table,
       to_regclass('public.intel_submissions') as intel_submissions_table`,
   );
@@ -64,6 +66,7 @@ async function assertSchemaReady(client: PoolClient) {
   if (
     !row?.users_table ||
     !row.join_drafts_table ||
+    !row.referral_activations_table ||
     !row.contact_messages_table ||
     !row.intel_submissions_table
   ) {
@@ -131,13 +134,14 @@ async function loadStoreWithClient(client: PoolClient): Promise<AppStore> {
            referral_code as "referralCode",
            username,
            username_normalized as "usernameNormalized",
-           pin_hash as "pinHash",
-           account_code as "accountCode",
-           account_code_hash as "accountCodeHash",
-           state,
-           age_range as "ageRange",
-           gender,
-           created_at as "createdAt"
+            pin_hash as "pinHash",
+            account_code as "accountCode",
+            account_code_hash as "accountCodeHash",
+            state,
+            age_range as "ageRange",
+            gender,
+            reserved_referral_codes as "reservedReferralCodes",
+            created_at as "createdAt"
          from join_drafts
        ) t`,
     ),
@@ -151,9 +155,24 @@ async function loadStoreWithClient(client: PoolClient): Promise<AppStore> {
            created_by_user_id as "createdByUserId",
            used_by_user_id as "usedByUserId",
            used_at as "usedAt",
+           created_at as "createdAt",
            expires_at as "expiresAt",
            is_active as "isActive"
          from referral_codes
+       ) t`,
+    ),
+    referralActivations: await readJsonArray(
+      client,
+      `select coalesce(json_agg(row_to_json(t)), '[]'::json) as data
+       from (
+         select
+           id,
+           referral_code_id as "referralCodeId",
+           referrer_user_id as "referrerUserId",
+           referred_user_id as "referredUserId",
+           points_awarded as "pointsAwarded",
+           created_at as "createdAt"
+         from referral_activations
        ) t`,
     ),
     accountRecoveryEvents: await readJsonArray(
@@ -253,50 +272,6 @@ async function loadStoreWithClient(client: PoolClient): Promise<AppStore> {
          from gist_reports
        ) t`,
     ),
-    surveys: await readJsonArray(
-      client,
-      `select coalesce(json_agg(row_to_json(t)), '[]'::json) as data
-       from (
-         select
-           id,
-           question,
-           created_by_user_id as "createdByUserId",
-           scope_type as "scopeType",
-           scope_value as "scopeValue",
-           status,
-           pinned,
-           starts_at as "startsAt",
-           ends_at as "endsAt",
-           created_at as "createdAt",
-           points_reward as "pointsReward"
-         from surveys
-       ) t`,
-    ),
-    surveyOptions: await readJsonArray(
-      client,
-      `select coalesce(json_agg(row_to_json(t)), '[]'::json) as data
-       from (
-         select
-           id,
-           survey_id as "surveyId",
-           label,
-           votes_count as "votesCount"
-         from survey_options
-       ) t`,
-    ),
-    surveyVotes: await readJsonArray(
-      client,
-      `select coalesce(json_agg(row_to_json(t)), '[]'::json) as data
-       from (
-         select
-           id,
-           survey_id as "surveyId",
-           option_id as "optionId",
-           user_id as "userId",
-           created_at as "createdAt"
-         from survey_votes
-       ) t`,
-    ),
     alerts: await readJsonArray(
       client,
       `select coalesce(json_agg(row_to_json(t)), '[]'::json) as data
@@ -375,21 +350,6 @@ async function loadStoreWithClient(client: PoolClient): Promise<AppStore> {
            created_at as "createdAt",
            updated_at as "updatedAt"
          from pinned_gists
-       ) t`,
-    ),
-    predictionModules: await readJsonArray(
-      client,
-      `select coalesce(json_agg(row_to_json(t)), '[]'::json) as data
-       from (
-         select
-           id,
-           title,
-           body,
-           kicker,
-           status,
-           created_by_user_id as "createdByUserId",
-           created_at as "createdAt"
-         from prediction_modules
        ) t`,
     ),
     userPointsLedger: await readJsonArray(
@@ -494,16 +454,13 @@ async function writeStoreWithClient(client: PoolClient, store: AppStore) {
       location_cache,
       oga_actions,
       pinned_gists,
-      prediction_modules,
       saved_gists,
       sessions,
-      survey_votes,
-      survey_options,
       user_points_ledger,
       user_trust_profiles,
+      referral_activations,
       referral_codes,
       gists,
-      surveys,
       feature_flags,
       users
     cascade`,
@@ -566,16 +523,17 @@ async function writeStoreWithClient(client: PoolClient, store: AppStore) {
   await insertJsonRows(
     client,
     `insert into referral_codes (
-      id, code, created_by_user_id, used_by_user_id, used_at, expires_at, is_active
+      id, code, created_by_user_id, used_by_user_id, used_at, created_at, expires_at, is_active
     )
     select
-      id, code, "createdByUserId", "usedByUserId", "usedAt", "expiresAt", "isActive"
+      id, code, "createdByUserId", "usedByUserId", "usedAt", "createdAt", "expiresAt", "isActive"
     from jsonb_to_recordset($1::jsonb) as x(
       id text,
       code text,
       "createdByUserId" text,
       "usedByUserId" text,
       "usedAt" timestamptz,
+      "createdAt" timestamptz,
       "expiresAt" timestamptz,
       "isActive" boolean
     )`,
@@ -584,13 +542,31 @@ async function writeStoreWithClient(client: PoolClient, store: AppStore) {
 
   await insertJsonRows(
     client,
+    `insert into referral_activations (
+      id, referral_code_id, referrer_user_id, referred_user_id, points_awarded, created_at
+    )
+    select
+      id, "referralCodeId", "referrerUserId", "referredUserId", "pointsAwarded", "createdAt"
+    from jsonb_to_recordset($1::jsonb) as x(
+      id text,
+      "referralCodeId" text,
+      "referrerUserId" text,
+      "referredUserId" text,
+      "pointsAwarded" integer,
+      "createdAt" timestamptz
+    )`,
+    store.referralActivations,
+  );
+
+  await insertJsonRows(
+    client,
     `insert into join_drafts (
       id, referral_code_id, referral_code, username, username_normalized, pin_hash,
-      account_code, account_code_hash, state, age_range, gender, created_at
+      account_code, account_code_hash, state, age_range, gender, reserved_referral_codes, created_at
     )
     select
       id, "referralCodeId", "referralCode", username, "usernameNormalized", "pinHash",
-      "accountCode", "accountCodeHash", state, "ageRange", gender, "createdAt"
+      "accountCode", "accountCodeHash", state, "ageRange", gender, "reservedReferralCodes", "createdAt"
     from jsonb_to_recordset($1::jsonb) as x(
       id text,
       "referralCodeId" text,
@@ -603,6 +579,7 @@ async function writeStoreWithClient(client: PoolClient, store: AppStore) {
       state text,
       "ageRange" text,
       gender text,
+      "reservedReferralCodes" jsonb,
       "createdAt" timestamptz
     )`,
     store.joinDrafts,
@@ -749,58 +726,6 @@ async function writeStoreWithClient(client: PoolClient, store: AppStore) {
 
   await insertJsonRows(
     client,
-    `insert into surveys (
-      id, question, created_by_user_id, scope_type, scope_value, status, pinned,
-      starts_at, ends_at, created_at, points_reward
-    )
-    select
-      id, question, "createdByUserId", "scopeType", "scopeValue", status, pinned,
-      "startsAt", "endsAt", "createdAt", "pointsReward"
-    from jsonb_to_recordset($1::jsonb) as x(
-      id text,
-      question text,
-      "createdByUserId" text,
-      "scopeType" text,
-      "scopeValue" text,
-      status text,
-      pinned boolean,
-      "startsAt" timestamptz,
-      "endsAt" timestamptz,
-      "createdAt" timestamptz,
-      "pointsReward" integer
-    )`,
-    store.surveys,
-  );
-
-  await insertJsonRows(
-    client,
-    `insert into survey_options (id, survey_id, label, votes_count)
-     select id, "surveyId", label, "votesCount"
-     from jsonb_to_recordset($1::jsonb) as x(
-       id text,
-       "surveyId" text,
-       label text,
-       "votesCount" integer
-     )`,
-    store.surveyOptions,
-  );
-
-  await insertJsonRows(
-    client,
-    `insert into survey_votes (id, survey_id, option_id, user_id, created_at)
-     select id, "surveyId", "optionId", "userId", "createdAt"
-     from jsonb_to_recordset($1::jsonb) as x(
-       id text,
-       "surveyId" text,
-       "optionId" text,
-       "userId" text,
-       "createdAt" timestamptz
-     )`,
-    store.surveyVotes,
-  );
-
-  await insertJsonRows(
-    client,
     `insert into alerts (id, user_id, type, title, body, link, read_at, created_at)
      select id, "userId", type, title, body, link, "readAt", "createdAt"
      from jsonb_to_recordset($1::jsonb) as x(
@@ -897,25 +822,6 @@ async function writeStoreWithClient(client: PoolClient, store: AppStore) {
       "updatedAt" timestamptz
     )`,
     store.pinnedGists,
-  );
-
-  await insertJsonRows(
-    client,
-    `insert into prediction_modules (
-      id, title, body, kicker, status, created_by_user_id, created_at
-    )
-    select
-      id, title, body, kicker, status, "createdByUserId", "createdAt"
-    from jsonb_to_recordset($1::jsonb) as x(
-      id text,
-      title text,
-      body text,
-      kicker text,
-      status text,
-      "createdByUserId" text,
-      "createdAt" timestamptz
-    )`,
-    store.predictionModules,
   );
 
   await insertJsonRows(
