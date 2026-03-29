@@ -3,10 +3,8 @@ import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/blocks/page-header";
 import { DropGistForm } from "@/components/forms/drop-gist-form";
 import { BackButton } from "@/components/blocks/back-button";
-import { requireUser } from "@/lib/server/services/auth";
 
 export default async function DropPage() {
-  const viewer = await requireUser();
 
   return (
     <PageWithContextRail
@@ -44,7 +42,7 @@ export default async function DropPage() {
             description="Text only. One tag only. We go ask for your current spot here and place am for the right Mata."
           />
           <Card className="space-y-5">
-            <DropGistForm viewer={viewer} />
+            <DropGistForm />
           </Card>
         </div>
       }

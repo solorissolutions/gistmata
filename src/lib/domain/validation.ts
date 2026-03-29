@@ -81,12 +81,6 @@ export const gistSchema = z.object({
     .min(4, "Tell Mata wetin happen first.")
     .max(MAX_GIST_LENGTH, `Keep am within ${MAX_GIST_LENGTH} characters.`),
   tag: tagSchema,
-  displayLocality: z.string().trim().min(2, "Location no clear yet."),
-  areaBucket: z.string().trim().min(2, "Location no clear yet."),
-  admin2Name: z.string().trim().min(2, "Location no clear yet."),
-  admin2Type: z.string().trim().min(2, "Location no clear yet."),
-  stateName: stateSchema,
-  confidenceScore: z.coerce.number().min(0).max(1),
 });
 
 export const followUpGistSchema = z.object({
@@ -104,12 +98,6 @@ export const followUpGistSchema = z.object({
     "same-for-my-side",
   ]),
   parentGistId: z.string().trim().min(3, "Parent gist no clear."),
-  displayLocality: z.string().trim().min(2, "Location no clear yet."),
-  areaBucket: z.string().trim().min(2, "Location no clear yet."),
-  admin2Name: z.string().trim().min(2, "Location no clear yet."),
-  admin2Type: z.string().trim().min(2, "Location no clear yet."),
-  stateName: stateSchema,
-  confidenceScore: z.coerce.number().min(0).max(1),
 });
 
 export const commentSchema = z.object({

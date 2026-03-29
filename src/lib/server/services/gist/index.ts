@@ -2,7 +2,6 @@ import "server-only";
 
 import type { GistDraftInput } from "@/lib/contracts/service-layer";
 import type { LocationSnapshot, Viewer } from "@/lib/domain/types";
-import { gistSchema } from "@/lib/domain/validation";
 import { applyGistDraftIntelligence } from "@/lib/server/ai/posting-intelligence";
 import {
   createGistRecord,
@@ -23,19 +22,6 @@ function normalizeGistLocation(location: LocationSnapshot) {
 
 export function canViewerPostGist(viewer: Viewer) {
   return !viewer.comotTagged;
-}
-
-export function validateGistDraft(input: {
-  body: string;
-  tag: string;
-  displayLocality: string;
-  areaBucket: string;
-  admin2Name: string;
-  admin2Type: string;
-  stateName: string;
-  confidenceScore: number;
-}) {
-  return gistSchema.parse(input);
 }
 
 export async function createGist(input: GistDraftInput, viewer: Viewer) {

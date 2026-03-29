@@ -7,7 +7,6 @@ import {
   BookMarked,
   House,
   Layers3,
-  MapPin,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
@@ -48,32 +47,15 @@ function isActivePath(pathname: string, href: string) {
   return pathname.startsWith(href);
 }
 
-function CurrentCoverage({ viewer, compact = false }: { viewer: Viewer; compact?: boolean }) {
-  const locality = viewer.location?.displayLocality ?? viewer.homeState;
-  const detail = viewer.location
-    ? `${viewer.location.admin2Name} · ${viewer.homeState}`
-    : "Your local Mata go sharpen after your first Drop Gist.";
-
+function HomeStateCard({ viewer, compact = false }: { viewer: Viewer; compact?: boolean }) {
   if (compact) {
-    return (
-      <Card className="flex items-center justify-center px-2 py-4">
-        <MapPin
-          className="h-4 w-4 shrink-0 text-[var(--gm-ink-soft)]"
-          aria-hidden="true"
-        />
-        <span className="sr-only">Current coverage: {viewer.homeState}</span>
-      </Card>
-    );
+    return null;
   }
 
   return (
-    <Card className="space-y-2">
-      <div className="muted-label flex items-center gap-1">
-        <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-        Current coverage
-      </div>
-      <div className="text-lg font-bold tracking-[-0.03em]">{locality}</div>
-      <p className="text-sm leading-6 text-[var(--gm-ink-soft)]">{detail}</p>
+    <Card className="space-y-1 px-4 py-3">
+      <p className="muted-label">Home state</p>
+      <p className="text-base font-bold tracking-[-0.03em]">{viewer.homeState}</p>
     </Card>
   );
 }
@@ -155,11 +137,6 @@ export function LeftRail({ viewer }: { viewer: Viewer }) {
             </Link>
           </div>
         </div>
-        <div className="rounded-[18px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs leading-5 text-[var(--muted-foreground)]">
-          {viewer.location
-            ? `${viewer.location.displayLocality} · ${viewer.homeState}`
-            : `Home state: ${viewer.homeState}`}
-        </div>
       </div>
 
       {/* ── Mobile drawer ── */}
@@ -201,27 +178,9 @@ export function LeftRail({ viewer }: { viewer: Viewer }) {
               </Link>
             </Card>
 
-            {/* Mata context shortcuts */}
+            {/* Quick links */}
             <div className="mt-4 space-y-1">
-              <p className="muted-label px-1">Mata context</p>
-              <Link
-                href="/mata#street-signal"
-                prefetch={false}
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[var(--nav-inactive)] hover:bg-[var(--surface-2)] hover:text-[var(--nav-active)]"
-              >
-                <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
-                Street signal
-              </Link>
-              <Link
-                href="/mata#nearby-moving"
-                prefetch={false}
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[var(--nav-inactive)] hover:bg-[var(--surface-2)] hover:text-[var(--nav-active)]"
-              >
-                <Layers3 className="h-4 w-4 shrink-0" aria-hidden="true" />
-                Nearby gist moving
-              </Link>
+              <p className="muted-label px-1">Quick links</p>
               <Link
                 href="/score"
                 prefetch={false}
@@ -229,7 +188,7 @@ export function LeftRail({ viewer }: { viewer: Viewer }) {
                 className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[var(--nav-inactive)] hover:bg-[var(--surface-2)] hover:text-[var(--nav-active)]"
               >
                 <Trophy className="h-4 w-4 shrink-0" aria-hidden="true" />
-                Monthly teaser
+                Monthly leaderboard
               </Link>
               <Link
                 href="/locker/saved"
@@ -243,7 +202,7 @@ export function LeftRail({ viewer }: { viewer: Viewer }) {
             </div>
 
             <div className="mt-4">
-              <CurrentCoverage viewer={viewer} />
+              <HomeStateCard viewer={viewer} />
             </div>
           </div>
         </div>
@@ -304,7 +263,7 @@ export function LeftRail({ viewer }: { viewer: Viewer }) {
             </Link>
           </Card>
 
-          <CurrentCoverage viewer={viewer} compact={collapsed} />
+          <HomeStateCard viewer={viewer} compact={collapsed} />
         </div>
       </aside>
     </>

@@ -1,5 +1,5 @@
-const CACHE_NAME = "gistmata-static-v2";
-const APP_SHELL = ["/", "/manifest.webmanifest"];
+const CACHE_NAME = "gistmata-static-v3";
+const APP_SHELL = ["/", "/mata", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -34,6 +34,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // API routes: always network-first, no cache
+  if (url.pathname.startsWith("/api/")) {
+    return;
+  }
+
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
@@ -42,17 +47,24 @@ self.addEventListener("fetch", (event) => {
             const copy = response.clone();
             void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           }
-
           return response;
         })
-        .catch(async () => (await caches.match(request)) || caches.match("/")),
+        .catch(async () => {
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          const fallback = await caches.match("/mata");
+          return fallback ?? new Response("GistMata is offline. Reconnect to drop gists.", {
+            status: 503,
+            headers: { "Content-Type": "text/plain" },
+          });
+        }),
     );
     return;
   }
 
   const isStaticAsset =
     url.pathname.startsWith("/_next/static/") ||
-    /\.(?:css|js|png|svg|jpg|jpeg|webp|ico)$/.test(url.pathname);
+    /\.(?:css|js|png|svg|jpg|jpeg|webp|ico|woff2?)$/.test(url.pathname);
 
   if (!isStaticAsset) {
     return;
@@ -60,16 +72,13 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     caches.match(request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
+      if (cached) return cached;
 
       return fetch(request).then((response) => {
         if (response.ok) {
           const copy = response.clone();
           void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
         }
-
         return response;
       });
     }),

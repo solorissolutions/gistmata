@@ -11,6 +11,12 @@ export const metadata: Metadata = {
   title: "GistMata",
   description: "Anonymous, hyperlocal Mata for text-first gist across Nigeria.",
   manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "GistMata",
+    statusBarStyle: "black-translucent",
+    startupImage: "/logo.png",
+  },
   openGraph: {
     title: "GistMata",
     description: "Anonymous, hyperlocal Mata for text-first gist across Nigeria.",

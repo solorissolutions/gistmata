@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { GitBranch, LocateFixed, RefreshCcw, SignalLow } from "lucide-react";
+import { GitBranch, SignalLow } from "lucide-react";
 
 import type { DraftAssistResponse } from "@/lib/ai/contracts";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -11,32 +11,11 @@ import {
   MAX_GIST_LENGTH,
   RELATION_TYPE_OPTIONS,
 } from "@/lib/domain/constants";
-import type { GistCardView, Viewer } from "@/lib/domain/types";
+import type { GistCardView } from "@/lib/domain/types";
 import { INITIAL_ACTION_STATE } from "@/lib/domain/validation";
 import { submitFollowUpGist } from "@/lib/server/mata-actions";
 
-type ResolvedLocation = {
-  displayLocality: string;
-  areaBucket: string;
-  admin2Name: string;
-  admin2Type: string;
-  stateName: string;
-  confidenceScore: number;
-  providerLabel?: string;
-  fallbackUsed?: boolean;
-};
-
-function fromViewer(viewer: Viewer): ResolvedLocation | null {
-  return viewer.location ?? null;
-}
-
-export function FollowUpGistForm({
-  viewer,
-  parentGist,
-}: {
-  viewer: Viewer;
-  parentGist: GistCardView;
-}) {
+export function FollowUpGistForm({ parentGist }: { parentGist: GistCardView }) {
   const [state, action] = useActionState(submitFollowUpGist, INITIAL_ACTION_STATE);
   const [bodyCount, setBodyCount] = useState(0);
   const [body, setBody] = useState("");
@@ -45,41 +24,7 @@ export function FollowUpGistForm({
   const [relationType, setRelationType] = useState("follow-up");
   const [relationTouched, setRelationTouched] = useState(false);
   const [draftAssist, setDraftAssist] = useState<DraftAssistResponse | null>(null);
-  const [location, setLocation] = useState<ResolvedLocation | null>(() => fromViewer(viewer));
-  const [locationState, setLocationState] = useState<"idle" | "loading" | "ready" | "error">(
-    fromViewer(viewer) ? "ready" : "idle",
-  );
   const [online, setOnline] = useState(true);
-
-  async function resolveWithCoords(coords?: { latitude?: number; longitude?: number }) {
-    setLocationState("loading");
-    try {
-      const response = await fetch("/api/location/resolve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(coords ?? {}),
-      });
-      if (!response.ok) throw new Error("Location no clear.");
-      const data = (await response.json()) as ResolvedLocation;
-      setLocation(data);
-      setLocationState("ready");
-    } catch {
-      setLocationState("error");
-      setLocation(fromViewer(viewer));
-    }
-  }
-
-  async function requestLocation() {
-    if (!navigator.geolocation) {
-      await resolveWithCoords();
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => resolveWithCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-      async () => resolveWithCoords(),
-      { enableHighAccuracy: false, timeout: 8000 },
-    );
-  }
 
   useEffect(() => {
     const syncStatus = () => setOnline(window.navigator.onLine);
@@ -116,9 +61,7 @@ export function FollowUpGistForm({
           signal: controller.signal,
         });
 
-        if (!response.ok) {
-          return;
-        }
+        if (!response.ok) return;
 
         const data = (await response.json()) as DraftAssistResponse;
         setDraftAssist(data);
@@ -194,29 +137,6 @@ export function FollowUpGistForm({
         ) : null}
       </div>
 
-      <div className="rounded-[24px] border border-[var(--border)] bg-[var(--surface-2)] p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="muted-label">Posting area</p>
-            <p className="mt-1 text-sm text-[var(--gm-ink-soft)]">
-              {location
-                ? `${location.displayLocality} · ${location.stateName}`
-                : "Make we place this gist for the correct Mata."}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={requestLocation}
-            disabled={locationState === "loading"}
-            className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold"
-            aria-label={location ? "Refresh posting location" : "Use current location"}
-          >
-            {location ? <RefreshCcw className="h-4 w-4" aria-hidden="true" /> : <LocateFixed className="h-4 w-4" aria-hidden="true" />}
-            {locationState === "loading" ? "Finding..." : location ? "Refresh spot" : "Use current spot"}
-          </button>
-        </div>
-      </div>
-
       {!online ? (
         <div className="rounded-[24px] border border-dashed border-[var(--border)] bg-[var(--surface-soft)] p-4 text-sm text-[var(--gm-ink-soft)]">
           <div className="flex items-center gap-2 font-semibold text-[var(--foreground)]">
@@ -248,14 +168,10 @@ export function FollowUpGistForm({
           <span aria-live="polite">{bodyCount}/{MAX_GIST_LENGTH}</span>
         </div>
         {draftAssist?.safety.severity === "warn" ? (
-          <p className="text-xs leading-5 text-[var(--accent)]">
-            {draftAssist.safety.reason}
-          </p>
+          <p className="text-xs leading-5 text-[var(--accent)]">{draftAssist.safety.reason}</p>
         ) : null}
         {draftAssist?.safety.severity === "block" ? (
-          <p className="text-xs leading-5 text-[var(--destructive)]">
-            {draftAssist.safety.reason}
-          </p>
+          <p className="text-xs leading-5 text-[var(--destructive)]">{draftAssist.safety.reason}</p>
         ) : null}
       </div>
 
@@ -288,12 +204,6 @@ export function FollowUpGistForm({
       </div>
 
       <input type="hidden" name="parentGistId" value={parentGist.id} />
-      <input type="hidden" name="displayLocality" value={location?.displayLocality ?? viewer.homeState} />
-      <input type="hidden" name="areaBucket" value={location?.areaBucket ?? viewer.homeState} />
-      <input type="hidden" name="admin2Name" value={location?.admin2Name ?? viewer.homeState} />
-      <input type="hidden" name="admin2Type" value={location?.admin2Type ?? "State"} />
-      <input type="hidden" name="stateName" value={location?.stateName ?? viewer.homeState} />
-      <input type="hidden" name="confidenceScore" value={String(location?.confidenceScore ?? 0.68)} />
 
       {state.message ? (
         <p
@@ -307,7 +217,7 @@ export function FollowUpGistForm({
       <SubmitButton
         idleLabel="Drop Follow-up Gist"
         pendingLabel="Dropping..."
-        disabled={!online || locationState === "loading"}
+        disabled={!online}
         className="w-full sm:w-auto"
       />
     </form>

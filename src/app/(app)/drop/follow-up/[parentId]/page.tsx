@@ -29,7 +29,7 @@ export default async function FollowUpDropPage({
         description="You dey add your voice to an ongoing matter. This is your own full gist, linked to the original."
       />
       <Card className="space-y-5">
-        <FollowUpGistForm viewer={viewer} parentGist={detail.gist} />
+        <FollowUpGistForm parentGist={detail.gist} />
       </Card>
     </div>
   );

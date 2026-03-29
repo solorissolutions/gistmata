@@ -39,12 +39,6 @@ export async function submitGist(
   const validated = gistSchema.safeParse({
     body: formData.get("body"),
     tag: formData.get("tag"),
-    displayLocality: formData.get("displayLocality"),
-    areaBucket: formData.get("areaBucket"),
-    admin2Name: formData.get("admin2Name"),
-    admin2Type: formData.get("admin2Type"),
-    stateName: formData.get("stateName"),
-    confidenceScore: formData.get("confidenceScore"),
   });
 
   if (!validated.success) {
@@ -58,12 +52,12 @@ export async function submitGist(
       body: validated.data.body,
       tag: validated.data.tag,
       location: {
-        displayLocality: validated.data.displayLocality,
-        areaBucket: validated.data.areaBucket,
-        admin2Name: validated.data.admin2Name,
-        admin2Type: validated.data.admin2Type,
-        stateName: validated.data.stateName,
-        confidenceScore: validated.data.confidenceScore,
+        displayLocality: viewer.homeState,
+        areaBucket: viewer.homeState,
+        admin2Name: viewer.homeState,
+        admin2Type: "State",
+        stateName: viewer.homeState,
+        confidenceScore: 1.0,
       },
     }, viewer);
   } catch (error) {
@@ -91,12 +85,6 @@ export async function submitFollowUpGist(
     tag: formData.get("tag"),
     relationType: formData.get("relationType"),
     parentGistId: formData.get("parentGistId"),
-    displayLocality: formData.get("displayLocality"),
-    areaBucket: formData.get("areaBucket"),
-    admin2Name: formData.get("admin2Name"),
-    admin2Type: formData.get("admin2Type"),
-    stateName: formData.get("stateName"),
-    confidenceScore: formData.get("confidenceScore"),
   });
 
   if (!validated.success) {
@@ -112,12 +100,12 @@ export async function submitFollowUpGist(
       body: validated.data.body,
       tag: validated.data.tag,
       location: {
-        displayLocality: validated.data.displayLocality,
-        areaBucket: validated.data.areaBucket,
-        admin2Name: validated.data.admin2Name,
-        admin2Type: validated.data.admin2Type,
-        stateName: validated.data.stateName,
-        confidenceScore: validated.data.confidenceScore,
+        displayLocality: viewer.homeState,
+        areaBucket: viewer.homeState,
+        admin2Name: viewer.homeState,
+        admin2Type: "State",
+        stateName: viewer.homeState,
+        confidenceScore: 1.0,
       },
     }, viewer);
   } catch (error) {
