@@ -1,53 +1,30 @@
-import { PageWithContextRail } from "@/components/app-shell/page-with-context-rail";
-import { Card } from "@/components/ui/card";
-import { PageHeader } from "@/components/blocks/page-header";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+
 import { DropGistForm } from "@/components/forms/drop-gist-form";
-import { BackButton } from "@/components/blocks/back-button";
 import { requireUser } from "@/lib/server/services/auth";
 
 export default async function DropPage() {
   const viewer = await requireUser();
 
   return (
-    <PageWithContextRail
-      storageKey="gm-drop-context-collapsed"
-      mobileLabel="Drop context"
-      sections={[
-        {
-          id: "rules",
-          title: "Rules",
-          defaultOpen: true,
-          content: (
-            <div className="space-y-2 text-sm leading-6 text-[var(--gm-ink-soft)]">
-              <p>Text only.</p>
-              <p>One tag only.</p>
-              <p>No hashtags. No media. No repost.</p>
-            </div>
-          ),
-        },
-        {
-          id: "privacy",
-          title: "Privacy",
-          content: (
-            <p className="text-sm leading-6 text-[var(--gm-ink-soft)]">
-              We use your current spot to place the gist in the right Mata. We no store raw coordinates for persistent app data.
-            </p>
-          ),
-        },
-      ]}
-      main={
-        <div className="space-y-5">
-          <BackButton fallbackHref="/mata" />
-          <PageHeader
-            eyebrow="Drop Gist"
-            title="Drop Gist"
-            description="Text only. One tag only. We go ask for your current spot here and place am for the right Mata."
-          />
-          <Card className="space-y-5">
-            <DropGistForm viewer={viewer} />
-          </Card>
-        </div>
-      }
-    />
+    <div className="flex flex-col">
+      {/* Header */}
+      <div className="sticky-header flex items-center gap-6 px-4 py-3">
+        <Link
+          href="/mata"
+          className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-[var(--nav-hover)]"
+          aria-label="Back to Mata"
+        >
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+        </Link>
+        <h1 className="text-[20px] font-bold">Drop Gist</h1>
+      </div>
+
+      {/* Compose form */}
+      <div className="px-4 py-4">
+        <DropGistForm viewer={viewer} />
+      </div>
+    </div>
   );
 }

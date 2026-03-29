@@ -1,7 +1,12 @@
 import Link from "next/link";
+import { Sparkles, Clock } from "lucide-react";
 
-import { FEED_SORT_OPTIONS } from "@/lib/domain/constants";
 import { cn } from "@/lib/utils";
+
+const sortOptions = [
+  { value: "smart", label: "Top", icon: Sparkles },
+  { value: "recent", label: "Latest", icon: Clock },
+] as const;
 
 export function FeedSortToggle({
   active,
@@ -13,8 +18,8 @@ export function FeedSortToggle({
   tag: string;
 }) {
   return (
-    <div className="chip-scroll">
-      {FEED_SORT_OPTIONS.map((option) => {
+    <div className="flex items-center justify-end gap-1 border-b border-[var(--border)] px-4 py-2">
+      {sortOptions.map((option) => {
         const params = new URLSearchParams();
         if (tag !== "All") {
           params.set("tag", tag);
@@ -23,6 +28,7 @@ export function FeedSortToggle({
           params.set("sort", option.value);
         }
         const href = params.size > 0 ? `${levelPath}?${params.toString()}` : levelPath;
+        const Icon = option.icon;
 
         return (
           <Link
@@ -30,12 +36,13 @@ export function FeedSortToggle({
             href={href}
             prefetch={false}
             className={cn(
-              "shrink-0 rounded-full border px-3 py-2.5 text-xs font-semibold tracking-[0.08em] transition",
+              "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors",
               active === option.value
-                ? "border-[var(--accent)] bg-[var(--chip-active)] text-[var(--chip-active-foreground)]"
-                : "border-[var(--border)] bg-[var(--chip)] text-[var(--chip-foreground)] hover:bg-[var(--surface-2)]",
+                ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
+                : "text-[var(--secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]"
             )}
           >
+            <Icon className="h-4 w-4" aria-hidden="true" />
             {option.label}
           </Link>
         );

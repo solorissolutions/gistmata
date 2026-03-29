@@ -3,5 +3,13 @@ import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("panel p-4 sm:p-5", className)} {...props} />;
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4",
+        className
+      )}
+      {...props}
+    />
+  );
 }

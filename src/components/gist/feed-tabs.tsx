@@ -5,27 +5,30 @@ import { cn } from "@/lib/utils";
 
 export function FeedTabs({ active }: { active: string }) {
   return (
-    <div className="chip-scroll">
-      {FEED_LEVELS.map((level) => {
-        const href = level.value === "my-street" ? "/mata" : `/mata/${level.value}`;
-        const selected = active === level.value;
+    <div className="sticky-header">
+      <div className="flex">
+        {FEED_LEVELS.map((level) => {
+          const href = level.value === "my-street" ? "/mata" : `/mata/${level.value}`;
+          const selected = active === level.value;
 
-        return (
-          <Link
-            key={level.value}
-            href={href}
-            prefetch={false}
-            className={cn(
-              "shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition",
-              selected
-                ? "bg-[var(--chip-active)] text-[var(--chip-active-foreground)]"
-                : "border border-[var(--border)] bg-[var(--chip)] text-[var(--chip-foreground)] hover:bg-[var(--surface-2)]",
-            )}
-          >
-            {level.label}
-          </Link>
-        );
-      })}
+          return (
+            <Link
+              key={level.value}
+              href={href}
+              prefetch={false}
+              className={cn(
+                "relative flex flex-1 items-center justify-center py-4 text-[15px] font-medium transition-colors hover:bg-[var(--surface-hover)]",
+                selected ? "font-bold text-[var(--foreground)]" : "text-[var(--secondary)]"
+              )}
+            >
+              <span>{level.label}</span>
+              {selected && (
+                <span className="absolute bottom-0 left-1/2 h-1 w-14 -translate-x-1/2 rounded-full bg-[var(--accent)]" />
+              )}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

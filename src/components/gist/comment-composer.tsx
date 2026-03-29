@@ -1,39 +1,50 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
-import { SubmitButton } from "@/components/ui/submit-button";
+import { Button } from "@/components/ui/button";
 import { INITIAL_ACTION_STATE } from "@/lib/domain/validation";
 import { submitComment } from "@/lib/server/mata-actions";
 
 export function CommentComposer({ gistId }: { gistId: string }) {
   const [state, action] = useActionState(submitComment, INITIAL_ACTION_STATE);
+  const [body, setBody] = useState("");
+
+  const canSubmit = body.trim().length > 0;
 
   return (
-    <form
-      action={action}
-      className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm backdrop-blur lg:bottom-4"
-    >
+    <form action={action} className="flex gap-3">
       <input type="hidden" name="gistId" value={gistId} />
-      <div className="space-y-3">
+
+      {/* Avatar placeholder */}
+      <div className="flex-shrink-0">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-soft)] text-sm font-bold">
+          ?
+        </div>
+      </div>
+
+      {/* Input */}
+      <div className="min-w-0 flex-1">
         <textarea
           name="body"
-          placeholder="Drop your comment"
-          className="min-h-28 w-full rounded-[22px] border border-[var(--border)] bg-[var(--input)] px-4 py-3 text-sm text-[var(--input-foreground)] outline-none placeholder:text-[var(--input-placeholder)] focus:border-[var(--accent)] focus:outline-2 focus:outline-offset-2 focus:outline-[var(--ring)]"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Drop your reply"
+          className="min-h-[60px] w-full resize-none border-none bg-transparent text-[17px] text-[var(--foreground)] placeholder:text-[var(--secondary)] focus:outline-none"
         />
-        {state.message ? (
-          <p
-            className={
-              state.status === "error"
-                ? "text-sm text-[var(--destructive)]"
-                : "text-sm text-[var(--accent)]"
-            }
-          >
+
+        {state.message && (
+          <p className={`mt-1 text-[14px] ${
+            state.status === "error" ? "text-[var(--destructive)]" : "text-[var(--accent)]"
+          }`}>
             {state.message}
           </p>
-        ) : null}
-        <div className="flex justify-end">
-          <SubmitButton idleLabel="Drop comment" pendingLabel="Dropping..." className="w-full sm:w-auto" />
+        )}
+
+        <div className="mt-2 flex justify-end">
+          <Button type="submit" size="sm" disabled={!canSubmit}>
+            Reply
+          </Button>
         </div>
       </div>
     </form>

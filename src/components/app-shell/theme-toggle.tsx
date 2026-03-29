@@ -3,7 +3,7 @@
 import { Moon, Sun } from "lucide-react";
 
 import { useTheme } from "@/components/app-shell/theme-provider";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const { theme, toggleTheme } = useTheme();
@@ -11,20 +11,22 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const label = theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
 
   return (
-    <Button
+    <button
       type="button"
-      variant="ghost"
-      size="icon"
       onClick={toggleTheme}
       aria-label={label}
       title={label}
-      className={compact ? "h-8 w-8" : "h-10 w-10"}
+      className={cn(
+        "nav-item justify-center xl:justify-start",
+        compact ? "h-10 w-10 p-0" : ""
+      )}
     >
       {theme === "dark" ? (
-        <Sun className="h-4 w-4" aria-hidden="true" />
+        <Sun className="h-[26px] w-[26px]" aria-hidden="true" />
       ) : (
-        <Moon className="h-4 w-4" aria-hidden="true" />
+        <Moon className="h-[26px] w-[26px]" aria-hidden="true" />
       )}
-    </Button>
+      {!compact && <span className="hidden xl:inline">Theme</span>}
+    </button>
   );
 }
