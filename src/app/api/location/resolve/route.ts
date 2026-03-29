@@ -15,7 +15,20 @@ export async function POST(request: Request) {
     longitude?: number;
   };
 
-  const location = await resolvePostingLocation(body, viewer);
-
-  return NextResponse.json(location);
+  try {
+    const location = await resolvePostingLocation(body, viewer);
+    return NextResponse.json(location);
+  } catch {
+    return NextResponse.json({
+      displayLocality: viewer.homeState,
+      areaBucket: viewer.homeState,
+      admin2Name: viewer.homeState,
+      admin2Type: "State",
+      stateName: viewer.homeState,
+      confidenceScore: 0.5,
+      provider: "state-fallback",
+      providerLabel: "State Fallback",
+      fallbackUsed: true,
+    });
+  }
 }

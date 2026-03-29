@@ -8,7 +8,11 @@ import {
 } from "@/lib/server/repositories/alerts-repository";
 
 export async function getUserAlertsBundle(viewer: Viewer) {
-  return fetchAlertsBundle(viewer.id);
+  try {
+    return await fetchAlertsBundle(viewer.id);
+  } catch {
+    return { viewer, groupedAlerts: [] };
+  }
 }
 
 export async function createBroadcast(input: BroadcastCreationInput, oga: Viewer) {

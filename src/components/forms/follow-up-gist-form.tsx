@@ -288,10 +288,10 @@ export function FollowUpGistForm({
       </div>
 
       <input type="hidden" name="parentGistId" value={parentGist.id} />
-      <input type="hidden" name="displayLocality" value={location?.displayLocality ?? ""} />
-      <input type="hidden" name="areaBucket" value={location?.areaBucket ?? ""} />
-      <input type="hidden" name="admin2Name" value={location?.admin2Name ?? ""} />
-      <input type="hidden" name="admin2Type" value={location?.admin2Type ?? ""} />
+      <input type="hidden" name="displayLocality" value={location?.displayLocality ?? viewer.homeState} />
+      <input type="hidden" name="areaBucket" value={location?.areaBucket ?? viewer.homeState} />
+      <input type="hidden" name="admin2Name" value={location?.admin2Name ?? viewer.homeState} />
+      <input type="hidden" name="admin2Type" value={location?.admin2Type ?? "State"} />
       <input type="hidden" name="stateName" value={location?.stateName ?? viewer.homeState} />
       <input type="hidden" name="confidenceScore" value={String(location?.confidenceScore ?? 0.68)} />
 
@@ -307,7 +307,7 @@ export function FollowUpGistForm({
       <SubmitButton
         idleLabel="Drop Follow-up Gist"
         pendingLabel="Dropping..."
-        disabled={!online || !location || locationState === "loading"}
+        disabled={!online || locationState === "loading"}
         className="w-full sm:w-auto"
       />
     </form>

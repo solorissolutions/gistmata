@@ -270,10 +270,10 @@ export function DropGistForm({ viewer }: { viewer: Viewer }) {
         ) : null}
       </div>
 
-      <input type="hidden" name="displayLocality" value={location?.displayLocality ?? ""} />
-      <input type="hidden" name="areaBucket" value={location?.areaBucket ?? ""} />
-      <input type="hidden" name="admin2Name" value={location?.admin2Name ?? ""} />
-      <input type="hidden" name="admin2Type" value={location?.admin2Type ?? ""} />
+      <input type="hidden" name="displayLocality" value={location?.displayLocality ?? viewer.homeState} />
+      <input type="hidden" name="areaBucket" value={location?.areaBucket ?? viewer.homeState} />
+      <input type="hidden" name="admin2Name" value={location?.admin2Name ?? viewer.homeState} />
+      <input type="hidden" name="admin2Type" value={location?.admin2Type ?? "State"} />
       <input type="hidden" name="stateName" value={location?.stateName ?? viewer.homeState} />
       <input
         type="hidden"
@@ -295,7 +295,7 @@ export function DropGistForm({ viewer }: { viewer: Viewer }) {
       <SubmitButton
         idleLabel="Drop Gist"
         pendingLabel="Dropping..."
-        disabled={!online || !location || locationState === "loading"}
+        disabled={!online || locationState === "loading"}
         className="w-full sm:w-auto"
       />
     </form>

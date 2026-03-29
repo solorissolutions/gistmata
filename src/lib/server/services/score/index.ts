@@ -3,13 +3,23 @@ import "server-only";
 import type { TierBenefitsBundle } from "@/lib/contracts/service-layer";
 import type { UserTier, Viewer } from "@/lib/domain/types";
 import { EXTRA_ALLOWANCE_RULE, TIER_BENEFITS } from "@/lib/domain/constants";
+import { getTierProgress } from "@/lib/domain/ranking";
 import {
   fetchLeaderboardBundle,
   fetchScoreBundle,
 } from "@/lib/server/repositories/score-repository";
 
 export async function getUserScoreBundle(viewer: Viewer) {
-  return fetchScoreBundle(viewer.id);
+  try {
+    return await fetchScoreBundle(viewer.id);
+  } catch {
+    return {
+      viewer,
+      progress: getTierProgress(viewer.pointsBalance),
+      history: [],
+      leaderboardTeaser: [],
+    };
+  }
 }
 
 export async function getLeaderboardBundle(mode: "monthly" | "all-time") {

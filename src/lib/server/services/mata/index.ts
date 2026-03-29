@@ -9,12 +9,35 @@ export async function getFeedBundle(
   filters: FeedBundleFilters,
   viewer: Viewer,
 ) {
-  return fetchFeedBundle({
-    viewerId: viewer.id,
-    level,
-    tag: filters.tag ?? "All",
-    sort: filters.sort ?? "smart",
-  });
+  try {
+    return await fetchFeedBundle({
+      viewerId: viewer.id,
+      level,
+      tag: filters.tag ?? "All",
+      sort: filters.sort ?? "smart",
+    });
+  } catch {
+    return {
+      viewer,
+      level,
+      sort: (filters.sort ?? "smart") as "smart" | "recent",
+      gists: [],
+      pinnedGists: [],
+      feedSummary: {
+        totalCount: 0,
+        freshCount: 0,
+        localLabel: viewer.location?.displayLocality ?? viewer.homeState,
+        broaderAreaLabel: viewer.location?.admin2Name ?? viewer.homeState,
+        coverageText: "",
+        hotspotArea: viewer.location?.displayLocality ?? viewer.homeState,
+        spotlightTag: "General" as const,
+        nearbyMovement: [] as Array<[string, number]>,
+        topAreas: [] as Array<[string, number]>,
+      },
+      leaderboardTeaser: [],
+      flags: {} as Record<string, boolean>,
+    };
+  }
 }
 
 export async function getHotFeedBundle(viewer: Viewer) {
