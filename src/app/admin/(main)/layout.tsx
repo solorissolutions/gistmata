@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { LogOut } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 const navItems = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/articles", label: "Articles" },
