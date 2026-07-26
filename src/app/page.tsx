@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { parseFeaturedIds, encodeFeaturedIds } from "@/lib/utils";
 import { Hero } from "@/components/home/Hero";
+import { LatestPublications } from "@/components/home/LatestPublications";
+import { FeaturedStory } from "@/components/home/FeaturedStory";
 import { WhatIsGistmata } from "@/components/home/WhatIsGistmata";
 import { Pillars } from "@/components/home/Pillars";
 import { CurrentlyBuilding } from "@/components/home/CurrentlyBuilding";
@@ -51,9 +53,23 @@ export default async function HomePage() {
     // Database not available during build
   }
 
-  const latest = published.filter(
-    (a) => !featured.some((f: any) => f?.id === a.id)
+  // Lead the page with a real article: the top featured pick, or the
+  // most recent publication if nothing has been explicitly featured.
+  const heroArticle = featured[0] ?? published[0] ?? null;
+  const heroId = heroArticle?.id;
+
+  // Editor's Pick spotlight: a second featured article, otherwise the next
+  // most recent publication that isn't already the hero.
+  const remaining = published.filter(
+    (a) => a.id !== heroId && !featured.some((f: any) => f?.id === a.id)
   );
+  const spotlight = featured[1] ?? remaining[0] ?? null;
+  const spotlightId = spotlight?.id;
+
+  // Recent publications grid: everything else, most recent first.
+  const gridArticles = published
+    .filter((a) => a.id !== heroId && a.id !== spotlightId)
+    .slice(0, 6);
 
   return (
     <>
@@ -61,7 +77,9 @@ export default async function HomePage() {
         title="Gistmata — Knowledge Through Exploration"
         description="A knowledge publication exploring AI-assisted hacking, personal transformation, and emerging intelligence systems."
       />
-      <Hero featured={featured} latest={latest.slice(0, 6)} />
+      <Hero article={heroArticle} />
+      <LatestPublications articles={gridArticles} />
+      <FeaturedStory article={spotlight} />
       <Pillars />
       <WhatIsGistmata />
       <CurrentlyBuilding />

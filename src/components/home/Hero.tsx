@@ -1,200 +1,121 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { CATEGORIES, CONTENT_TYPES, formatDate, readingTime } from "@/lib/utils";
 import type { ArticleData } from "@/types";
 
-export function Hero({
-  featured,
-  latest,
-}: {
-  featured: ArticleData[];
-  latest: ArticleData[];
-}) {
+function categoryLabel(category: string) {
+  return CATEGORIES[category as keyof typeof CATEGORIES]?.label ?? category;
+}
+
+export function Hero({ article }: { article: ArticleData | null }) {
+  if (!article) {
+    return (
+      <section className="border-b border-border">
+        <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
+          <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            Gistmata — A Knowledge Publication
+          </span>
+          <h1 className="mt-6 max-w-3xl font-serif text-4xl leading-tight tracking-tight text-foreground sm:text-5xl md:text-6xl text-balance">
+            The first stories are on their way.
+          </h1>
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
+            Gistmata is a living archive of essays, research notes, and field
+            reports on the edges of technology, intelligence, and human
+            development. The inaugural publications are being written now.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-4">
+            <Link
+              href="/archive"
+              className="inline-flex h-11 items-center gap-2 bg-accent px-6 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90"
+            >
+              Explore the archive
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/about"
+              className="text-sm font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
+            >
+              What is Gistmata?
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const contentType =
+    CONTENT_TYPES[article.contentType as keyof typeof CONTENT_TYPES]?.label;
+
   return (
-    <section
-      className="relative border-b border-white/20 bg-cover bg-center"
-      style={{ backgroundImage: "url(/hero-bg.png)" }}
-    >
-      <div className="absolute inset-0 bg-black/80" />
-      <div className="relative mx-auto max-w-5xl px-6 py-16 sm:py-24 z-10 text-white">
-        <span className="mb-8 inline-block text-xs font-medium uppercase tracking-widest text-white/50">
+    <section className="border-b border-border">
+      <div className="mx-auto max-w-6xl px-6 py-14 sm:py-20">
+        <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
           Featured Story
         </span>
-        <div className="grid gap-8 lg:gap-12 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-10">
-            {featured.length === 0 ? (
-              <div className="pt-8 lg:pt-0">
-                <h1 className="text-3xl font-light leading-tight tracking-tight sm:text-4xl md:text-5xl text-white">
-                  Knowledge grows through exploration.
-                </h1>
-                <p className="mt-4 max-w-xl text-lg text-white/60">
-                  Gistmata is a living knowledge publication exploring the edges of
-                  technology, intelligence, and human development.
-                </p>
-              </div>
-            ) : featured.map((article, i) => (
-              <article key={article.id}>
-                {i === 0 ? (
-                  <div>
-                    <Link href={`/articles/${article.slug}`} className="block mb-6">
-                      {article.featuredImage ? (
-                        <img
-                          src={article.featuredImage}
-                          alt=""
-                          className="w-full aspect-video rounded object-cover border border-white/20"
-                        />
-                      ) : (
-                        <div className="w-full aspect-video rounded border border-white/20 bg-white/10" />
-                      )}
-                    </Link>
-                    <h2 className="text-2xl font-light leading-tight tracking-tight sm:text-3xl md:text-4xl text-white">
-                      <Link
-                        href={`/articles/${article.slug}`}
-                        className="hover:underline decoration-1 underline-offset-4 decoration-white/30"
-                      >
-                        {article.title}
-                      </Link>
-                    </h2>
-                    {article.excerpt && (
-                      <p className="mt-3 max-w-xl text-base text-white/60 leading-relaxed">
-                        {article.excerpt}
-                      </p>
-                    )}
-                    <div className="mt-5 flex items-center gap-4">
-                      <Link
-                        href={`/articles/${article.slug}`}
-                        className="inline-flex h-10 items-center justify-center border border-white bg-transparent px-6 text-sm font-medium text-white transition-colors hover:bg-white hover:text-black"
-                      >
-                        Read Article
-                      </Link>
-                      {article.publishedAt && (
-                        <span className="text-xs text-white/60">
-                          {new Intl.DateTimeFormat("en-US", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          }).format(article.publishedAt)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="border-t border-white/20 pt-6">
-                    <Link href={`/articles/${article.slug}`} className="block mb-4">
-                      {article.featuredImage ? (
-                        <img
-                          src={article.featuredImage}
-                          alt=""
-                          className="w-full aspect-video rounded object-cover border border-white/20"
-                        />
-                      ) : (
-                        <div className="w-full aspect-video rounded border border-white/20 bg-white/10" />
-                      )}
-                    </Link>
-                    <h3 className="text-lg font-light tracking-tight text-white">
-                      <Link
-                        href={`/articles/${article.slug}`}
-                        className="hover:underline decoration-1 underline-offset-4 decoration-white/30"
-                      >
-                        {article.title}
-                      </Link>
-                    </h3>
-                    {article.excerpt && (
-                      <p className="mt-1.5 text-sm text-white/60 line-clamp-2">
-                        {article.excerpt}
-                      </p>
-                    )}
-                    <div className="mt-3 flex items-center gap-3">
-                      <Link
-                        href={`/articles/${article.slug}`}
-                        className="inline-flex h-8 items-center justify-center border border-white px-4 text-xs font-medium text-white transition-colors hover:bg-white hover:text-black"
-                      >
-                        Read Article
-                      </Link>
-                      {article.publishedAt && (
-                        <span className="text-xs text-white/60">
-                          {new Intl.DateTimeFormat("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          }).format(article.publishedAt)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </article>
-            ))}
-          </div>
-
-          {latest.length > 0 && (
-            <aside className="border-t border-white/20 pt-8 lg:border-l lg:border-t-0 lg:pt-0 lg:pl-8">
-              <h2 className="text-xs font-medium uppercase tracking-widest text-white/60">
-                Latest Posts
-              </h2>
-              <div className="mt-6 divide-y divide-border">
-                {latest.map((article) => (
-                  <div key={article.id} className="flex gap-3 py-4 first:pt-0 last:pb-0">
-                    <Link
-                      href={`/articles/${article.slug}`}
-                      className="shrink-0"
-                    >
-                      {article.featuredImage ? (
-                        <img
-                          src={article.featuredImage}
-                          alt=""
-                          className="h-14 w-14 rounded object-cover border border-white/20"
-                        />
-                      ) : (
-                        <div className="h-14 w-14 rounded border border-white/20 bg-white/10" />
-                      )}
-                    </Link>
-                    <div className="min-w-0">
-                      <Link
-                        href={`/articles/${article.slug}`}
-                        className="text-sm font-medium text-white leading-snug hover:underline decoration-1 underline-offset-2 decoration-white/30"
-                      >
-                        {article.title}
-                      </Link>
-                      <p className="mt-1 text-xs text-white/60">
-                        {new Intl.DateTimeFormat("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        }).format(article.publishedAt!)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <Link
-                href="/archive"
-                className="mt-6 inline-block text-xs font-medium text-white/60 underline underline-offset-2 hover:text-white"
-              >
-                View all archive →
-              </Link>
-            </aside>
-          )}
-        </div>
-
-        <div className="mt-16 flex justify-center">
-          <a
-            href="#content"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-white/60 transition-colors hover:border-white hover:text-white animate-bounce"
-            aria-label="Scroll to content"
+        <div className="mt-8 grid items-center gap-10 lg:grid-cols-12 lg:gap-14">
+          <Link
+            href={`/articles/${article.slug}`}
+            className="group block lg:col-span-7"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <div className="relative aspect-[16/10] overflow-hidden border border-border bg-card">
+              {article.featuredImage ? (
+                <img
+                  src={article.featuredImage || "/placeholder.svg"}
+                  alt=""
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center px-8">
+                  <span className="text-center font-serif text-2xl leading-snug text-muted-foreground/70">
+                    {categoryLabel(article.category)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </Link>
+
+          <div className="lg:col-span-5">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
+              <span>{categoryLabel(article.category)}</span>
+              {contentType && (
+                <>
+                  <span aria-hidden className="text-border">
+                    /
+                  </span>
+                  <span>{contentType}</span>
+                </>
+              )}
+            </div>
+            <h1 className="mt-4 font-serif text-3xl leading-tight tracking-tight text-foreground sm:text-4xl md:text-5xl text-balance">
+              <Link
+                href={`/articles/${article.slug}`}
+                className="transition-colors hover:text-muted-foreground"
+              >
+                {article.title}
+              </Link>
+            </h1>
+            {article.excerpt && (
+              <p className="mt-5 text-lg leading-relaxed text-muted-foreground text-pretty">
+                {article.excerpt}
+              </p>
+            )}
+            <div className="mt-6 flex items-center gap-3 text-xs text-muted-foreground">
+              {article.publishedAt && (
+                <span>{formatDate(article.publishedAt)}</span>
+              )}
+              <span aria-hidden className="text-border">
+                •
+              </span>
+              <span>{readingTime(article.content)}</span>
+            </div>
+            <Link
+              href={`/articles/${article.slug}`}
+              className="mt-8 inline-flex h-11 items-center gap-2 bg-accent px-6 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90"
             >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-          </a>
+              Read the full story
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </div>
     </section>

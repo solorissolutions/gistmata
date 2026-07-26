@@ -27,19 +27,22 @@ const pillars = [
 
 export function Pillars() {
   return (
-    <section id="content" className="border-b border-border py-40 sm:py-56">
+    <section id="content" className="border-b border-border py-16 sm:py-20">
       <div className="mx-auto max-w-6xl px-6">
-        <h2 className="text-base font-medium uppercase tracking-widest text-muted-foreground">
-          Interesting Topics
+        <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          Explore by Pillar
         </h2>
-        <div className="mt-12 grid gap-12 sm:grid-cols-3">
+        <p className="mt-2 font-serif text-2xl tracking-tight text-foreground sm:text-3xl">
+          Three threads of inquiry
+        </p>
+        <div className="mt-10 grid gap-6 sm:grid-cols-3">
           {pillars.map((pillar) => (
             <Link
               key={pillar.key}
               href={pillar.href}
-              className="group flex flex-col gap-6 border border-border p-12 transition-colors hover:border-foreground/30"
+              className="group flex flex-col gap-4 border border-border bg-card p-8 transition-colors hover:border-foreground/40"
             >
-              <h3 className="text-2xl font-medium tracking-tight text-foreground">
+              <h3 className="font-serif text-2xl tracking-tight text-foreground">
                 {pillar.title}
               </h3>
               <p className="text-base leading-relaxed text-muted-foreground">
