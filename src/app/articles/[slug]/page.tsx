@@ -121,16 +121,10 @@ export default async function ArticlePage({
 }
 
 export async function generateStaticParams() {
-  try {
-    const articles = await prisma.article.findMany({
-      where: { status: "published" },
-      select: { slug: true },
-    });
-    return articles.map((a) => ({ slug: a.slug }));
-  } catch {
-    return [];
-  }
+  return [];
 }
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
